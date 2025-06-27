@@ -1,0 +1,6 @@
+#!/bin/bash
+# Script to initialize Python environment
+
+conda activate aots_env
+make install-deps
+export PYTHONPATH=$(pwd) 

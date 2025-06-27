@@ -1,8 +1,16 @@
-.PHONY: env update-env
+.PHONY: env install-deps clean
 
-env:
-	conda create -y -n $(ENV_NAME) python=3.10
-	conda activate $(ENV_NAME) && pip install -r requirements.txt
+ENV_NAME=aots_env
+PYTHON_VERSION=3.10
 
-update-env:
-	conda activate $(ENV_NAME) && pip install -r requirements.txt 
+# Create the conda environment
+create-env:
+	conda create -y -n $(ENV_NAME) python=$(PYTHON_VERSION)
+
+# Install dependencies into the environment
+install-deps:
+	conda run -n $(ENV_NAME) pip install -r requirements.txt
+
+# Remove the environment (for cleanup)
+clean:
+	conda env remove -n $(ENV_NAME) -y 
