@@ -1,0 +1,116 @@
+# Data download configuration for Nicaragua
+country:
+  name: "Nicaragua"
+  iso_code: "NI"
+  admin_level: 2
+
+# Overpass API settings
+overpass:
+  base_url: "https://overpass-api.de/api/interpreter"
+  timeout: 300  # Increased timeout for large queries
+  max_retries: 3
+  retry_delay: 1.0
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "data_download.log"
+
+# Processing settings
+processing:
+  min_coordinates: 2  # Minimum coordinates for LineString geometries
+  add_category_column: true
+  add_id_column: true
+
+# Data categories to download
+data_categories:
+  roads:
+    enabled: true
+    timeout: 300  # Specific timeout for roads
+    query_type: "simple_ways"  # Use simple way query instead of complex filtering
+    output_format: "geom"  # Use 'out geom' for full geometry
+    exclude_highways:
+      - "footway"
+      - "path"
+      - "cycleway"
+      - "track"
+      - "pedestrian"
+      - "steps"
+      - "bus_stop"
+      - "platform"
+      - "service"
+    tags:
+      - "highway=motorway"
+      - "highway=trunk"
+      - "highway=primary"
+      - "highway=secondary"
+      - "highway=tertiary"
+      - "highway=residential"
+    exclude_tags:
+      - "highway=footway"
+      - "highway=path"
+      - "highway=cycleway"
+      - "highway=service"
+  
+  schools:
+    enabled: true
+    query_type: "standard"
+    output_format: "center"
+    tags:
+      - "amenity=school"
+      - "amenity=university"
+      - "amenity=college"
+  
+  hospitals:
+    enabled: true
+    query_type: "standard"
+    output_format: "center"
+    tags:
+      - "amenity=hospital"
+      - "amenity=clinic"
+      - "healthcare=hospital"
+      - "healthcare=clinic"
+  
+  population:
+    enabled: true
+    query_type: "standard"
+    output_format: "center"
+    tags:
+      - "place=city"
+      - "place=town"
+      - "place=village"
+      - "place=hamlet"
+  
+  vaccination_centers:
+    enabled: true
+    query_type: "standard"
+    output_format: "center"
+    tags:
+      - "amenity=pharmacy"
+      - "healthcare=vaccination_centre"
+      - "healthcare=pharmacy"
+  
+  childcare:
+    enabled: true
+    query_type: "standard"
+    output_format: "center"
+    tags:
+      - "amenity=kindergarten"
+      - "amenity=childcare"
+      - "amenity=daycare"
+  
+  baby_goods:
+    enabled: true
+    query_type: "standard"
+    output_format: "center"
+    tags:
+      - "shop=baby_goods"
+      - "shop=convenience"
+      - "shop=supermarket"
+
+# Output settings
+output:
+  raw_data_dir: "data/raw"
+  file_format: "geojson"
+  crs: "EPSG:4326" 
