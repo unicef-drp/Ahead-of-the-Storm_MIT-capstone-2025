@@ -36,7 +36,7 @@ To set up your Python environment for this project:
 
 1. **Create the conda environment:**
    ```bash
-   make env
+   make create-env
    ```
 2. **Activate the environment and install dependencies:**
    ```bash
