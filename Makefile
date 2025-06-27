@@ -1,4 +1,4 @@
-.PHONY: env install-deps clean
+.PHONY: create-env install-deps clean 
 
 ENV_NAME=aots_env
 PYTHON_VERSION=3.10
