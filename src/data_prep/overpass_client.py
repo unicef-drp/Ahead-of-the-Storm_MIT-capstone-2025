@@ -69,20 +69,3 @@ class OverpassClient:
                 else:
                     logger.error(f"All {self.max_retries} query attempts failed")
                     return None
-
-    def build_area_query(self, country_iso: str, admin_level: int = 2) -> str:
-        """
-        Build a query to get the administrative area for a country.
-
-        Args:
-            country_iso: ISO country code (e.g., 'NI' for Nicaragua)
-            admin_level: Administrative level (default: 2 for country)
-
-        Returns:
-            Overpass QL query string
-        """
-        return f"""
-        [out:json][timeout:25];
-        area["ISO3166-1"="{country_iso}"][admin_level={admin_level}]->.searchArea;
-        out;
-        """

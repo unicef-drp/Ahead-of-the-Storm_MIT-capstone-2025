@@ -5,16 +5,13 @@ This module provides functionality to download various types of geographic
 data from OpenStreetMap for specific regions.
 """
 
-import os
 import yaml
 import logging
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 
 import geopandas as gpd
-import pandas as pd
-from shapely.geometry import Point, LineString, Polygon
-from shapely.ops import unary_union
+from shapely.geometry import Point, LineString
 
 from .overpass_client import OverpassClient
 
