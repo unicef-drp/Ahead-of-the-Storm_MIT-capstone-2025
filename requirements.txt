@@ -5,3 +5,11 @@ matplotlib==3.10.3
 seaborn==0.13.2
 jupyter==1.0.0
 gurobipy==11.0.0 
+ecmwf-api-client==1.6.3
+xarray==2024.1.1
+netCDF4==1.6.5
+cfgrib==0.9.10.4
+cdsapi==0.6.1
+requests==2.31.0
+cartopy==0.22.0
+PyYAML==6.0.1 
