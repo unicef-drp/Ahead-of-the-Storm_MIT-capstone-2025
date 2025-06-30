@@ -1,18 +1,42 @@
 import geopandas as gpd
 import matplotlib.pyplot as plt
-from shapely.geometry import box
+import requests
+from shapely.geometry import shape
+
+
+def get_nicaragua_polygon():
+    """
+    Get Nicaragua polygon using the same method as the hurricane code.
+    Returns:
+        shapely.geometry.Polygon: Nicaragua boundary polygon
+    """
+    countries_url = "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
+    countries = requests.get(countries_url).json()
+
+    nic_poly = None
+    for feat in countries["features"]:
+        props = feat.get("properties", {})
+        if any(
+            isinstance(v, str) and v.strip().lower() == "nicaragua"
+            for v in props.values()
+        ):
+            nic_poly = shape(feat["geometry"])
+            break
+
+    if nic_poly is None:
+        raise RuntimeError("Could not find Nicaragua in GeoJSON.")
+
+    return nic_poly
 
 
 def get_nicaragua_boundary():
     """
-    Get Nicaragua administrative boundary using a simple bounding box approach.
+    Get Nicaragua administrative boundary using the actual polygon.
     Returns:
         GeoDataFrame with Nicaragua boundary
     """
-    # Nicaragua bounding box (approximate)
-    # minx, miny, maxx, maxy = -87.7, 10.7, -82.5, 15.0
-    nicaragua_bbox = box(-87.7, 10.7, -82.5, 15.0)
-    nicaragua_gdf = gpd.GeoDataFrame(geometry=[nicaragua_bbox], crs="EPSG:4326")
+    nic_poly = get_nicaragua_polygon()
+    nicaragua_gdf = gpd.GeoDataFrame(geometry=[nic_poly], crs="EPSG:4326")
     return nicaragua_gdf
 
 
