@@ -4,4 +4,7 @@ scikit-learn==1.7.0
 matplotlib==3.10.3
 seaborn==0.13.2
 jupyter==1.0.0
-gurobipy==11.0.0 
+gurobipy==11.0.0
+requests==2.31.0
+pyyaml==6.0.1
+pathlib2==2.3.7 

@@ -82,6 +82,9 @@ env/
 *.sqlite
 *.pkl
 *.joblib
+*.nc
+*.json
+*.geojson
 
 # Logs
 *.log 
