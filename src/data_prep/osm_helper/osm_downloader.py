@@ -18,7 +18,7 @@ from .overpass_client import OverpassClient
 logger = logging.getLogger(__name__)
 
 
-class DataDownloader:
+class OSMDataDownloader:
     """Downloader for OpenStreetMap data using Overpass API."""
 
     def __init__(self, config_path: str = "config/data_config.yaml"):

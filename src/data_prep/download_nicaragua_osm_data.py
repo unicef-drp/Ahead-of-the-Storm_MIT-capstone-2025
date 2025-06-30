@@ -3,7 +3,7 @@
 Main script to download Nicaragua data from OpenStreetMap.
 
 This script downloads various types of geographic data for Nicaragua
-including roads, schools, hospitals, population centers, vaccination centers,
+including roads, schools, hospitals, vaccination centers,
 childcare facilities, and baby goods stores.
 """
 
@@ -12,7 +12,7 @@ import sys
 import yaml
 from pathlib import Path
 
-from src.data_prep.data_downloader import DataDownloader
+from src.data_prep.osm_helper import OSMDataDownloader
 
 
 def load_config(config_path: str = "config/data_config.yaml") -> dict:
@@ -50,7 +50,7 @@ def main():
 
     try:
         # Initialize data downloader
-        downloader = DataDownloader()
+        downloader = OSMDataDownloader()
 
         # Download all categories
         results = downloader.download_all()
