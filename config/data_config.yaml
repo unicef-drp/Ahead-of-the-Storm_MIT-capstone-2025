@@ -72,16 +72,6 @@ data_categories:
       - "healthcare=hospital"
       - "healthcare=clinic"
   
-  population:
-    enabled: true
-    query_type: "standard"
-    output_format: "center"
-    tags:
-      - "place=city"
-      - "place=town"
-      - "place=village"
-      - "place=hamlet"
-  
   vaccination_centers:
     enabled: true
     query_type: "standard"
@@ -111,6 +101,6 @@ data_categories:
 
 # Output settings
 output:
-  raw_data_dir: "data/raw"
+  raw_data_dir: "data/raw/osm"
   file_format: "geojson"
   crs: "EPSG:4326" 

@@ -1,0 +1,37 @@
+# Census and population data configuration for Nicaragua
+country:
+  name: "Nicaragua"
+  iso_code: "NI"
+  year: 2020  # Census year
+
+# Data sources configuration
+data_sources:
+  # WorldPop - High resolution population data
+  worldpop:
+    enabled: true
+    direct_url: "https://data.worldpop.org/GIS/Population/Global_2000_2020_Constrained/2020/BSGM/NIC/nic_ppp_2020_UNadj_constrained.tif"
+    timeout: 300
+    max_retries: 3
+    retry_delay: 1.0
+    
+  # WorldPop Age/Sex structures
+  worldpop_age_sex:
+    enabled: true
+    base_url: "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_Constrained_UNadj/2020/NIC"
+    age_groups: [0, 1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
+    genders: ["f", "m"]  # female, male
+    timeout: 300
+    max_retries: 3
+    retry_delay: 1.0
+    download_delay: 0.5  # Delay between downloads in seconds
+
+# Output settings
+output:
+  raw_data_dir: "data/raw/census"
+  crs: "EPSG:4326"
+  
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "census_download.log" 
