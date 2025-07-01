@@ -21,7 +21,7 @@ model:
 # Data download settings
 download:
   base_url: "https://deepmind.google.com/science/weatherlab/download/cyclones"
-  output_directory: "data/weatherlab/raw_ensemble"
+  output_directory: "data/raw/weatherlab"
   create_directories: true
   overwrite_existing: true
   
@@ -56,7 +56,7 @@ processing:
   # Whether to process and clean the data after download
   process_after_download: true
   # Output processed data to a separate directory
-  processed_output_directory: "data/weatherlab/processed"
+  processed_output_directory: "data/preprocessed/weatherlab/processed"
   # Whether to overwrite existing processed files
   overwrite_existing: true
   

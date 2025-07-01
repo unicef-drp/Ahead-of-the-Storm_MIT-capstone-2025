@@ -1,0 +1,104 @@
+# Impact Analysis Configuration
+# This file contains parameters for generating heatmaps and risk analysis
+
+impact_analysis:
+  # Input data sources
+  input:
+    # Hurricane data sources (in order of preference)
+    hurricane_data:
+      synthetic_file: "data/preprocessed/weatherlab/synthetic/processed_FNV3_2024_11_04_00_00_ensemble_data_synthetic.csv"
+      original_file: "data/preprocessed/weatherlab/processed/processed_FNV3_2024_11_04_00_00_ensemble_data.csv"
+    
+    # School data source
+    school_data: "data/raw/osm/schools.geojson"
+    
+    # Nicaragua boundary data
+    nicaragua_boundary: "data/raw/osm/nicaragua_boundary.geojson"
+
+  # Output configuration
+  output:
+    # Base directory for all impact analysis results
+    base_directory: "data/results/impact_analysis"
+    
+    # Subdirectories for different types of outputs
+    plots_directory: "plots"
+    reports_directory: "reports"
+    data_directory: "processed_data"
+
+  # Grid and visualization parameters
+  grid:
+    # Grid resolution in degrees
+    resolution_degrees: 0.1
+    
+    # Grid bounds for Nicaragua (if not using boundary file)
+    bounds:
+      lon_min: -87.7
+      lon_max: -82.7
+      lat_min: 10.7
+      lat_max: 15.1
+
+  # Heatmap visualization settings
+  heatmaps:
+    # Figure size for all heatmaps
+    figure_size: [12, 10]
+    
+    # DPI for saved images
+    dpi: 300
+    
+    # Color maps for different heatmap types
+    color_maps:
+      hurricane: "Blues"
+      school: "Greens"
+      risk: "OrRd"
+    
+    # Alpha transparency for grid cells
+    alpha: 0.7
+    
+    # Line width for grid cell edges
+    line_width: 0.1
+    
+    # Edge color for grid cells
+    edge_color: "grey"
+
+  # Risk analysis parameters
+  risk_analysis:
+    # Whether to use log scale for risk heatmaps
+    use_log_scale: true
+    
+    # Risk calculation method: "multiplication" or "weighted_sum"
+    calculation_method: "multiplication"
+    
+    # Weights for different factors (if using weighted_sum)
+    weights:
+      hurricane_probability: 0.7
+      school_concentration: 0.3
+
+  # Data processing parameters
+  data_processing:
+    # Date/time columns to parse
+    datetime_columns:
+      - "forecast_time"
+      - "valid_time"
+    
+    # Required columns for hurricane data
+    required_hurricane_columns:
+      - "latitude"
+      - "longitude"
+      - "ensemble_member"
+      - "forecast_time"
+    
+    # Required columns for school data
+    required_school_columns:
+      - "geometry"
+      - "name"
+
+  # Logging and debugging
+  logging:
+    # Log level for impact analysis modules
+    level: "INFO"
+    
+    # Whether to print debug information
+    debug: false
+    
+    # Whether to save intermediate data
+    save_intermediate: false 

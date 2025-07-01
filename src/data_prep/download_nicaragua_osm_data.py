@@ -7,44 +7,17 @@ including roads, schools, hospitals, vaccination centers,
 childcare facilities, and baby goods stores.
 """
 
-import logging
 import sys
-import yaml
-from pathlib import Path
 
 from src.data_prep.osm_helper import OSMDataDownloader
-
-
-def load_config(config_path: str = "config/data_config.yaml") -> dict:
-    """Load configuration from YAML file."""
-    with open(config_path, "r") as f:
-        return yaml.safe_load(f)
-
-
-def setup_logging(config: dict):
-    """Set up logging configuration from config file."""
-    log_config = config.get("logging", {})
-
-    logging.basicConfig(
-        level=getattr(logging, log_config.get("level", "INFO")),
-        format=log_config.get(
-            "format", "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        ),
-        handlers=[
-            logging.FileHandler(log_config.get("file", "data_download.log")),
-            logging.StreamHandler(sys.stdout),
-        ],
-    )
+from src.utils.config_utils import load_config
+from src.utils.logging_utils import setup_logging, get_logger
 
 
 def main():
     """Main function to download Nicaragua data."""
-    # Load configuration
-    config = load_config()
-
     # Setup logging
-    setup_logging(config)
-    logger = logging.getLogger(__name__)
+    logger = setup_logging(__name__)
 
     logger.info("Starting Nicaragua data download")
 
