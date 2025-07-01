@@ -1,0 +1,75 @@
+# Hurricane Data Download Configuration
+# Google Weather Lab FNV3 Model - Hurricane Rafael (2024)
+
+hurricane:
+  name: "rafael"
+  year: 2024
+  track_id: "AL182024"  # Correct track ID for Hurricane Rafael
+  # Hurricane Rafael formed around November 4, 2024 and dissipated around November 10, 2024
+  # We'll download data for a broader range to capture all forecasts
+  start_date: "2024-11-03"  # Start before formation to capture early forecasts
+  end_date: "2024-11-10"    # End after dissipation to capture all forecasts
+  time_zone: "UTC"
+  forecast_times: ["00:00", "06:00", "12:00", "18:00"]  # 6-hour forecast intervals
+
+model:
+  name: "FNV3"
+  type: "ensemble"
+  track_type: "paired"
+  format: "csv"
+
+# Data download settings
+download:
+  base_url: "https://deepmind.google.com/science/weatherlab/download/cyclones"
+  output_directory: "data/weatherlab/raw_ensemble"
+  create_directories: true
+  overwrite_existing: true
+  
+# Ensemble settings
+ensemble:
+  # FNV3 typically has multiple ensemble members
+  # We'll download all available members
+  download_all_members: true
+  # If specific members are known, they can be listed here
+  specific_members: []  # Empty means download all
+  
+# Lead times to download (in hours)
+lead_times:
+  # FNV3 typically provides forecasts up to 360 hours (15 days)
+  # We'll download all available lead times
+  start_hour: 0
+  end_hour: 360
+  interval_hours: 6  # 6-hour intervals (00, 06, 12, 18 UTC)
+  
+# Variables to extract from the data
+variables:
+  - "latitude"
+  - "longitude" 
+  - "wind_speed"
+  - "pressure"
+  - "ensemble_member"
+  - "forecast_time"
+  - "lead_time"
+  
+# Processing options
+processing:
+  # Whether to process and clean the data after download
+  process_after_download: true
+  # Output processed data to a separate directory
+  processed_output_directory: "data/weatherlab/processed"
+  # Whether to overwrite existing processed files
+  overwrite_existing: true
+  
+# Logging configuration
+logging:
+  level: "INFO"
+  log_file: "logs/hurricane_download.log"
+  console_output: true
+
+# Error handling
+error_handling:
+  max_retries: 3
+  retry_delay_seconds: 5
+  continue_on_error: true
+  save_failed_downloads: true
+  failed_downloads_file: "logs/failed_downloads.txt" 
