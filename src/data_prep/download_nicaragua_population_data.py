@@ -5,15 +5,15 @@ Download Nicaragua population data from WorldPop.
 This script downloads high-resolution population data including age/sex structures.
 """
 
-import sys
 import logging
 import argparse
 from pathlib import Path
+import sys
 
 # Add src to path
-sys.path.append(str(Path(__file__).parent.parent))
+# sys.path.append(str(Path(__file__).parent.parent))
 
-from data_prep.census_helper.population_downloader import PopulationDownloader
+from src.data_prep.census_helper.population_downloader import PopulationDownloader
 
 
 def setup_logging():
