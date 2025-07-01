@@ -1,39 +1,19 @@
 #!/usr/bin/env python3
 """
-Create Synthetic Hurricane Script
+Create Synthetic Hurricane Script.
 
 This script takes a hurricane file from weatherlab/processed and applies
 latitude and longitude offsets to create a synthetic hurricane track.
 The offsets are specified in the config file.
 """
 
-import os
-import logging
-import yaml
+import sys
 import pandas as pd
-from pathlib import Path
 from datetime import datetime
 
-# Add src to path for imports
-# sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-
-
-def load_config(config_path: str = "config/synthetic_hurricane_config.yaml") -> dict:
-    """Load configuration from YAML file."""
-    with open(config_path, "r") as f:
-        return yaml.safe_load(f)
-
-
-def setup_logging():
-    """Setup logging configuration."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.StreamHandler(),
-            logging.FileHandler("synthetic_hurricane.log"),
-        ],
-    )
+from src.utils.config_utils import load_config, get_config_value
+from src.utils.logging_utils import setup_logging, get_logger
+from src.utils.path_utils import ensure_directory, get_data_path
 
 
 def create_synthetic_hurricane(config: dict) -> str:
@@ -46,27 +26,30 @@ def create_synthetic_hurricane(config: dict) -> str:
     Returns:
         Path to the created synthetic hurricane file
     """
-    logger = logging.getLogger(__name__)
+    logger = get_logger(__name__)
 
     # Extract configuration parameters
-    delta_lat = config["synthetic_hurricane"]["delta_latitude"]
-    delta_lon = config["synthetic_hurricane"]["delta_longitude"]
+    delta_lat = get_config_value(config, "synthetic_hurricane.delta_latitude")
+    delta_lon = get_config_value(config, "synthetic_hurricane.delta_longitude")
 
-    input_dir = Path(config["synthetic_hurricane"]["input"]["data_dir"])
-    source_file = config["synthetic_hurricane"]["input"]["source_file"]
-    output_dir = Path(config["synthetic_hurricane"]["output"]["data_dir"])
-    file_suffix = config["synthetic_hurricane"]["output"]["file_suffix"]
+    input_dir = get_config_value(config, "synthetic_hurricane.input.data_dir")
+    source_file = get_config_value(config, "synthetic_hurricane.input.source_file")
+    output_dir = get_config_value(config, "synthetic_hurricane.output.data_dir")
+    file_suffix = get_config_value(config, "synthetic_hurricane.output.file_suffix")
 
-    preserve_track_id = config["synthetic_hurricane"]["processing"][
-        "preserve_original_track_id"
-    ]
-    new_track_id = config["synthetic_hurricane"]["processing"]["new_track_id"]
+    preserve_track_id = get_config_value(
+        config, "synthetic_hurricane.processing.preserve_original_track_id"
+    )
+    new_track_id = get_config_value(
+        config, "synthetic_hurricane.processing.new_track_id"
+    )
 
-    # Create output directory if it doesn't exist
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Create output directory
+    output_path = get_data_path(output_dir)
+    ensure_directory(output_path)
 
     # Load source hurricane data
-    source_path = input_dir / source_file
+    source_path = get_data_path(input_dir) / source_file
     logger.info(f"Loading source hurricane data from: {source_path}")
 
     if not source_path.exists():
@@ -77,7 +60,7 @@ def create_synthetic_hurricane(config: dict) -> str:
     logger.info(f"Loaded {len(df):,} records from source file")
 
     # Display original track statistics
-    logger.info(f"Original track statistics:")
+    logger.info("Original track statistics:")
     logger.info(
         f"  Latitude range: {df['latitude'].min():.2f} to {df['latitude'].max():.2f}"
     )
@@ -100,35 +83,37 @@ def create_synthetic_hurricane(config: dict) -> str:
         logger.info(f"Updated track ID to: {new_track_id}")
 
     # Display new track statistics
-    logger.info(f"New track statistics:")
+    logger.info("New track statistics:")
     logger.info(
-        f"  Latitude range: {df_synthetic['latitude'].min():.2f} to {df_synthetic['latitude'].max():.2f}"
+        f"  Latitude range: {df_synthetic['latitude'].min():.2f} to "
+        f"{df_synthetic['latitude'].max():.2f}"
     )
     logger.info(
-        f"  Longitude range: {df_synthetic['longitude'].min():.2f} to {df_synthetic['longitude'].max():.2f}"
+        f"  Longitude range: {df_synthetic['longitude'].min():.2f} to "
+        f"{df_synthetic['longitude'].max():.2f}"
     )
     logger.info(f"  Track ID: {df_synthetic['track_id'].iloc[0]}")
 
     # Generate output filename
     source_name = source_file.replace(".csv", "")
     output_filename = f"{source_name}{file_suffix}.csv"
-    output_path = output_dir / output_filename
+    output_file_path = output_path / output_filename
 
     # Save synthetic hurricane data
-    logger.info(f"Saving synthetic hurricane data to: {output_path}")
-    df_synthetic.to_csv(output_path, index=False)
+    logger.info(f"Saving synthetic hurricane data to: {output_file_path}")
+    df_synthetic.to_csv(output_file_path, index=False)
 
     logger.info(
         f"Successfully created synthetic hurricane with {len(df_synthetic):,} records"
     )
 
-    return str(output_path)
+    return str(output_file_path)
 
 
 def main():
     """Main function to create synthetic hurricane."""
-    setup_logging()
-    logger = logging.getLogger(__name__)
+    # Setup logging
+    logger = setup_logging(__name__)
 
     print("=" * 60)
     print("SYNTHETIC HURRICANE GENERATOR")
@@ -137,7 +122,7 @@ def main():
     try:
         # Load configuration
         logger.info("Loading configuration...")
-        config = load_config()
+        config = load_config("config/synthetic_hurricane_config.yaml")
 
         # Create synthetic hurricane
         output_path = create_synthetic_hurricane(config)

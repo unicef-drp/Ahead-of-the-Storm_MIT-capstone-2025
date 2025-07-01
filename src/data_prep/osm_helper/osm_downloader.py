@@ -5,17 +5,15 @@ This module provides functionality to download various types of geographic
 data from OpenStreetMap for specific regions.
 """
 
-import yaml
-import logging
 from typing import Dict, List, Optional, Any
-from pathlib import Path
 
 import geopandas as gpd
 from shapely.geometry import Point, LineString
 
 from .overpass_client import OverpassClient
-
-logger = logging.getLogger(__name__)
+from src.utils.config_utils import load_config, get_config_value
+from src.utils.logging_utils import setup_logging, get_logger
+from src.utils.path_utils import ensure_directory, get_data_path
 
 
 class OSMDataDownloader:
@@ -28,20 +26,28 @@ class OSMDataDownloader:
         Args:
             config_path: Path to the configuration file
         """
-        self.config = self._load_config(config_path)
+        self.config = load_config(config_path)
+        self.logger = setup_logging(__name__)
         self.client = OverpassClient(
-            base_url=self.config["overpass"]["base_url"],
-            timeout=self.config["overpass"]["timeout"],
-            max_retries=self.config["overpass"].get("max_retries", 3),
-            retry_delay=self.config["overpass"].get("retry_delay", 1.0),
+            base_url=get_config_value(
+                self.config,
+                "overpass.base_url",
+                "https://overpass-api.de/api/interpreter",
+            ),
+            timeout=get_config_value(self.config, "overpass.timeout", 300),
+            max_retries=get_config_value(self.config, "overpass.max_retries", 3),
+            retry_delay=get_config_value(self.config, "overpass.retry_delay", 1.0),
         )
-        self.output_dir = Path(self.config["output"]["raw_data_dir"])
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self._setup_directories()
 
-    def _load_config(self, config_path: str) -> Dict[str, Any]:
-        """Load configuration from YAML file."""
-        with open(config_path, "r") as f:
-            return yaml.safe_load(f)
+    def _setup_directories(self):
+        """Create necessary directories if they don't exist."""
+        output_dir = get_config_value(
+            self.config, "output.raw_data_dir", "data/raw/osm"
+        )
+        self.output_dir = get_data_path(output_dir)
+        ensure_directory(self.output_dir)
+        self.logger.info(f"Output directory: {self.output_dir}")
 
     def _build_query(
         self, category: str, tags: List[str], exclude_tags: Optional[List[str]] = None
@@ -208,10 +214,10 @@ class OSMDataDownloader:
             GeoDataFrame with the downloaded data or None if failed
         """
         if not self.config["data_categories"][category]["enabled"]:
-            logger.info(f"Category {category} is disabled, skipping")
+            self.logger.info(f"Category {category} is disabled, skipping")
             return None
 
-        logger.info(f"Downloading data for category: {category}")
+        self.logger.info(f"Downloading data for category: {category}")
 
         category_config = self.config["data_categories"][category]
         tags = category_config["tags"]
@@ -225,13 +231,13 @@ class OSMDataDownloader:
         response = self.client.query(query)
 
         if response is None:
-            logger.error(f"Failed to download data for category: {category}")
+            self.logger.error(f"Failed to download data for category: {category}")
             return None
 
         geometries = self._extract_geometries(response, category)
 
         if not geometries:
-            logger.warning(f"No geometries found for category: {category}")
+            self.logger.warning(f"No geometries found for category: {category}")
             return None
 
         # Create GeoDataFrame
@@ -246,7 +252,7 @@ class OSMDataDownloader:
         if processing_config.get("add_id_column", True):
             gdf["id"] = range(len(gdf))
 
-        logger.info(f"Downloaded {len(gdf)} features for category: {category}")
+        self.logger.info(f"Downloaded {len(gdf)} features for category: {category}")
         return gdf
 
     def save_data(self, gdf: gpd.GeoDataFrame, category: str) -> str:
@@ -271,7 +277,7 @@ class OSMDataDownloader:
         else:
             raise ValueError(f"Unsupported file format: {file_format}")
 
-        logger.info(f"Saved {category} data to: {filepath}")
+        self.logger.info(f"Saved {category} data to: {filepath}")
         return str(filepath)
 
     def download_all(self) -> Dict[str, str]:
@@ -290,8 +296,8 @@ class OSMDataDownloader:
                     filepath = self.save_data(gdf, category)
                     results[category] = filepath
                 else:
-                    logger.warning(f"Failed to download category: {category}")
+                    self.logger.warning(f"Failed to download category: {category}")
             except Exception as e:
-                logger.error(f"Error downloading category {category}: {e}")
+                self.logger.error(f"Error downloading category {category}: {e}")
 
         return results

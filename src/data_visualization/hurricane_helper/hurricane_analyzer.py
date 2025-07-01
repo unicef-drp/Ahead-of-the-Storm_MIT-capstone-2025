@@ -1,18 +1,18 @@
 """
-Hurricane Data Analyzer for FNV3 Ensemble Data
+Hurricane Data Analyzer for FNV3 Ensemble Data.
 
 This module provides functionality to analyze and prepare hurricane forecast data
 from Google Weather Lab's FNV3 model for visualization and track plotting.
 """
 
-import os
 import pandas as pd
 import numpy as np
-from pathlib import Path
 from typing import List, Dict, Optional, Tuple
-import logging
 from datetime import datetime, timedelta
-import yaml
+
+from src.utils.config_utils import load_config, get_config_value, get_project_root
+from src.utils.logging_utils import setup_logging, get_logger
+from src.utils.path_utils import ensure_directory, get_data_path
 
 
 class HurricaneAnalyzer:
@@ -30,62 +30,27 @@ class HurricaneAnalyzer:
         Args:
             config_path: Path to the configuration file
         """
-        # Get project root (3 levels up from this file: hurricane_helper/data_prep/src/)
-        current_file = os.path.abspath(__file__)
-        self.project_root = Path(
-            os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
-            )
-        )
-        self.config = self._load_config(config_path)
-        self._setup_logging()
+        self.project_root = get_project_root()
+        self.config = load_config(config_path)
+        self.logger = setup_logging(__name__)
         self._setup_directories()
 
         # Get processed data directory from config
-        processed_dir = self.config.get("processing", {}).get(
-            "processed_output_directory", "data/preprocessed/weatherlab/processed"
+        processed_dir = get_config_value(
+            self.config,
+            "processing.processed_output_directory",
+            "data/preprocessed/weatherlab/processed",
         )
-        self.data_dir = self.project_root / processed_dir
+        self.data_dir = get_data_path(processed_dir)
 
         if not self.data_dir.exists():
             raise FileNotFoundError(f"Data directory not found: {self.data_dir}")
 
-    def _load_config(self, config_path: str) -> dict:
-        """Load configuration from YAML file."""
-        config_file = self.project_root / config_path
-        if not config_file.exists():
-            raise FileNotFoundError(f"Configuration file not found: {config_file}")
-
-        with open(config_file, "r") as f:
-            config = yaml.safe_load(f)
-
-        return config
-
-    def _setup_logging(self):
-        """Setup logging configuration."""
-        log_dir = self.project_root / "logs"
-        log_dir.mkdir(exist_ok=True)
-
-        log_file = (
-            log_dir
-            / f"hurricane_analyzer_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-        )
-
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=[logging.FileHandler(log_file), logging.StreamHandler()],
-        )
-
-        self.logger = logging.getLogger(__name__)
-        self.logger.info("Hurricane Analyzer initialized")
-
     def _setup_directories(self):
         """Create necessary directories if they don't exist."""
         # Create analysis directory
-        analysis_dir = self.project_root / "data" / "weatherlab" / "analysis"
-        analysis_dir.mkdir(parents=True, exist_ok=True)
-
+        analysis_dir = get_data_path("results/weatherlab/analysis")
+        ensure_directory(analysis_dir)
         self.logger.info(f"Analysis directory: {analysis_dir}")
 
     def load_all_data(self) -> pd.DataFrame:
@@ -341,7 +306,8 @@ class HurricaneAnalyzer:
             )
 
         self.logger.info(
-            f"Prepared track data: {len(track_df)} points, {track_df['track_id'].nunique()} tracks"
+            f"Prepared track data: {len(track_df)} points, "
+            f"{track_df['track_id'].nunique()} tracks"
         )
         return track_df
 
@@ -453,8 +419,8 @@ class HurricaneAnalyzer:
             Full path to the saved file
         """
         # Use the analysis directory that was set up in __init__
-        analysis_dir = self.project_root / "data" / "weatherlab" / "analysis"
-        analysis_dir.mkdir(parents=True, exist_ok=True)
+        analysis_dir = get_data_path("results/weatherlab/analysis")
+        ensure_directory(analysis_dir)
 
         # Create full path
         full_path = analysis_dir / output_path
@@ -500,19 +466,16 @@ def main():
         ensemble_spread = analyzer.calculate_ensemble_spread(df)
 
         # Save analysis results
-        output_dir = "../data/results/weatherlab/analysis"
+        analyzer.save_analysis_results(track_data, "track_data.csv", "track")
         analyzer.save_analysis_results(
-            track_data, f"{output_dir}/track_data.csv", "track"
+            intensity_data, "intensity_data.csv", "intensity"
         )
         analyzer.save_analysis_results(
-            intensity_data, f"{output_dir}/intensity_data.csv", "intensity"
-        )
-        analyzer.save_analysis_results(
-            ensemble_spread, f"{output_dir}/ensemble_spread.csv", "ensemble_spread"
+            ensemble_spread, "ensemble_spread.csv", "ensemble_spread"
         )
 
         print(f"\n✅ Analysis completed successfully!")
-        print(f"Results saved to: {output_dir}")
+        print(f"Results saved to: data/results/weatherlab/analysis/")
 
     except Exception as e:
         print(f"❌ Error during analysis: {e}")

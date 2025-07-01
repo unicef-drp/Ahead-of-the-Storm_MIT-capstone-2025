@@ -1,23 +1,19 @@
 """
-Hurricane Data Visualizer for FNV3 Ensemble Data
+Hurricane Data Visualizer for FNV3 Ensemble Data.
 
 This module provides functionality to create visualizations of hurricane forecast data
 from Google Weather Lab's FNV3 model, including ensemble tracks and intensity plots.
 """
 
-import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.colors import LinearSegmentedColormap
 import seaborn as sns
-from pathlib import Path
 from typing import List, Dict, Optional, Tuple
-import logging
 from datetime import datetime, timedelta
 import warnings
-import yaml
 import matplotlib.dates as mdates
 
 # Suppress matplotlib warnings
@@ -26,6 +22,10 @@ warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib")
 # Set style for better plots
 plt.style.use("default")
 sns.set_palette("husl")
+
+from src.utils.config_utils import load_config, get_config_value
+from src.utils.logging_utils import setup_logging, get_logger
+from src.utils.path_utils import ensure_directory, get_data_path
 
 
 class HurricaneVisualizer:
@@ -36,7 +36,7 @@ class HurricaneVisualizer:
     intensity curves, and statistical summaries.
     """
 
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: Optional[str] = None):
         """
         Initialize the hurricane visualizer.
 
@@ -44,13 +44,16 @@ class HurricaneVisualizer:
             config_path: Path to the configuration file
         """
         if config_path is None:
-            # Always use config/hurricane_config.yaml relative to project root
-            project_root = os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            )
-            config_path = os.path.join(project_root, "config", "hurricane_config.yaml")
-        self.config = self._load_config(config_path)
-        self._setup_logging()
+            config_path = "config/hurricane_config.yaml"
+
+        # Try to load config, but provide defaults if not found
+        try:
+            self.config = load_config(config_path)
+        except FileNotFoundError:
+            print(f"Warning: Config file not found at {config_path}, using defaults")
+            self.config = self._get_default_config()
+
+        self.logger = setup_logging(__name__)
         self._setup_directories()
 
         # Set up color schemes
@@ -59,7 +62,7 @@ class HurricaneVisualizer:
     def _setup_colors(self):
         """Setup color schemes for different plot types."""
         # Color scheme for ensemble members
-        self.ensemble_colors = plt.cm.tab20(np.linspace(0, 1, 20))
+        self.ensemble_colors = plt.cm.get_cmap("tab20")(np.linspace(0, 1, 20))
 
         # Color scheme for intensity (wind speed)
         self.intensity_colors = {
@@ -73,44 +76,29 @@ class HurricaneVisualizer:
         }
 
         # Color scheme for lead times
-        self.lead_time_colors = plt.cm.viridis(np.linspace(0, 1, 10))
+        self.lead_time_colors = plt.cm.get_cmap("viridis")(np.linspace(0, 1, 10))
 
-    def _load_config(self, config_path: str) -> dict:
-        """Load configuration from YAML file."""
-        config_file = Path(config_path)
-        if not config_file.exists():
-            raise FileNotFoundError(f"Configuration file not found: {config_file}")
-
-        with open(config_file, "r") as f:
-            config = yaml.safe_load(f)
-
-        return config
-
-    def _setup_logging(self):
-        """Setup logging configuration."""
-        log_dir = Path("logs")
-        log_dir.mkdir(exist_ok=True)
-
-        log_file = (
-            log_dir
-            / f"hurricane_visualizer_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-        )
-
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=[logging.FileHandler(log_file), logging.StreamHandler()],
-        )
-
-        self.logger = logging.getLogger(__name__)
-        self.logger.info("Hurricane Visualizer initialized")
+    def _get_default_config(self) -> dict:
+        """Provide default configuration if config file is not found."""
+        return {
+            "visualization": {
+                "output_directory": "data/results/weatherlab/plots",
+                "dpi": 300,
+                "figure_size": [12, 8],
+            },
+            "colors": {"ensemble_members": "tab20", "intensity": "viridis"},
+        }
 
     def _setup_directories(self):
         """Create necessary directories if they don't exist."""
         # Create plots directory
-        self.output_dir = Path("data/results/weatherlab/plots")
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-
+        output_dir = get_config_value(
+            self.config,
+            "visualization.output_directory",
+            "data/results/weatherlab/plots",
+        )
+        self.output_dir = get_data_path(output_dir)
+        ensure_directory(self.output_dir)
         self.logger.info(f"Output directory: {self.output_dir}")
 
     def plot_ensemble_tracks(

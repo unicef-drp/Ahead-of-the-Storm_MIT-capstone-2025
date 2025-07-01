@@ -10,8 +10,10 @@ from datetime import datetime, timedelta
 import pandas as pd
 import os
 
-from src.data_prep.hurricane_helper.hurricane_analyzer import HurricaneAnalyzer
-from src.data_visualization.hurricane_visualizer import HurricaneVisualizer
+from src.data_visualization.hurricane_helper.hurricane_analyzer import HurricaneAnalyzer
+from src.data_visualization.hurricane_helper.hurricane_visualizer import (
+    HurricaneVisualizer,
+)
 
 
 def main():

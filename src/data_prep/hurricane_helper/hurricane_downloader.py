@@ -5,19 +5,21 @@ This module provides functionality to download hurricane forecast data from
 Google Weather Lab's experimental FNV3 model, specifically for ensemble forecasts.
 """
 
-import os
-import sys
-import yaml
-import logging
 import requests
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import time
+import os
+import sys
 from urllib.parse import urljoin
 import re
+from pathlib import Path
+
+from src.utils.config_utils import load_config, get_config_value, get_project_root
+from src.utils.logging_utils import setup_logging
+from src.utils.path_utils import get_data_path, ensure_directory
 
 
 class HurricaneDownloader:
@@ -35,78 +37,29 @@ class HurricaneDownloader:
         Args:
             config_path: Path to the configuration YAML file
         """
-        # Get project root (3 levels up from this file: hurricane_helper/data_prep/src/)
-        current_file = os.path.abspath(__file__)
-        self.project_root = Path(
-            os.path.dirname(
-                os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
-            )
-        )
-        self.config = self._load_config(config_path)
-        self._setup_logging()
+        self.project_root = get_project_root()
+        self.config = load_config(config_path)
+        self.logger = setup_logging(__name__)
         self._setup_directories()
-
-    def _load_config(self, config_path: str) -> Dict:
-        """Load configuration from YAML file."""
-        try:
-            # Use absolute path from project root
-            config_file = self.project_root / config_path
-            with open(config_file, "r") as file:
-                config = yaml.safe_load(file)
-            return config
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Configuration file not found: {config_file}")
-        except yaml.YAMLError as e:
-            raise ValueError(f"Error parsing configuration file: {e}")
-
-    def _setup_logging(self):
-        """Setup logging configuration."""
-        log_config = self.config.get("logging", {})
-        log_level = getattr(logging, log_config.get("level", "INFO"))
-
-        # Create logs directory if it doesn't exist
-        log_file = log_config.get("log_file", "logs/hurricane_download.log")
-        log_file = self.project_root / log_file
-        log_dir = log_file.parent
-        if not log_dir.exists():
-            os.makedirs(log_dir)
-
-        # Configure logging
-        logging.basicConfig(
-            level=log_level,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=[
-                logging.FileHandler(log_file),
-                (
-                    logging.StreamHandler(sys.stdout)
-                    if log_config.get("console_output", True)
-                    else logging.NullHandler()
-                ),
-            ],
-        )
-        self.logger = logging.getLogger(__name__)
 
     def _setup_directories(self):
         """Create necessary directories for data storage."""
         download_config = self.config.get("download", {})
-        output_dir = download_config.get("output_directory", "data/raw/weatherlab")
-
-        # Use absolute paths from project root
-        output_dir = self.project_root / output_dir
-        if download_config.get("create_directories", True):
-            os.makedirs(output_dir, exist_ok=True)
-            self.logger.info(f"Created output directory: {output_dir}")
-
-        # Also create processed data directory
-        processing_config = self.config.get("processing", {})
-        processed_dir = processing_config.get(
-            "processed_output_directory", "data/preprocessed/weatherlab/processed"
+        output_dir = get_config_value(
+            download_config, "output_directory", "data/raw/weatherlab"
         )
-        processed_dir = self.project_root / processed_dir
-        os.makedirs(processed_dir, exist_ok=True)
+        self.output_dir = get_data_path(output_dir)
+        ensure_directory(self.output_dir)
+        self.logger.info(f"Created output directory: {self.output_dir}")
 
-        self.output_dir = output_dir
-        self.processed_dir = processed_dir
+        processing_config = self.config.get("processing", {})
+        processed_dir = get_config_value(
+            processing_config,
+            "processed_output_directory",
+            "data/preprocessed/weatherlab/processed",
+        )
+        self.processed_dir = get_data_path(processed_dir)
+        ensure_directory(self.processed_dir)
 
     def _generate_forecast_times(self) -> List[datetime]:
         """

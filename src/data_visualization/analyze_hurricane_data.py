@@ -7,39 +7,19 @@ from Google Weather Lab's FNV3 model, including ensemble tracks, intensity curve
 and statistical summaries.
 """
 
-import os
-from pathlib import Path
 from datetime import datetime
-import logging
 
-# Add src to path for imports
-# sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from src.data_prep.hurricane_helper.hurricane_analyzer import HurricaneAnalyzer
-from src.data_visualization.hurricane_visualizer import HurricaneVisualizer
-
-
-def setup_logging():
-    """Setup logging for the analysis script."""
-    log_dir = Path("logs")
-    log_dir.mkdir(exist_ok=True)
-
-    log_file = (
-        log_dir / f"hurricane_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-    )
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[logging.FileHandler(log_file), logging.StreamHandler()],
-    )
-
-    return logging.getLogger(__name__)
+from src.data_visualization.hurricane_helper.hurricane_analyzer import HurricaneAnalyzer
+from src.data_visualization.hurricane_helper.hurricane_visualizer import (
+    HurricaneVisualizer,
+)
+from src.utils.logging_utils import setup_logging, get_logger
+from src.utils.path_utils import ensure_directory, get_data_path
 
 
 def main():
     """Main analysis and visualization function."""
-    logger = setup_logging()
+    logger = setup_logging(__name__)
 
     print("=" * 60)
     print("HURRICANE RAFAEL (2024) ANALYSIS & VISUALIZATION")
@@ -137,22 +117,16 @@ def main():
 
         # 6. Save analysis results
         print("\n💾 Saving analysis results...")
-        analysis_dir = Path("data/results/weatherlab/analysis")
-        analysis_dir.mkdir(exist_ok=True)
+        analysis_dir = get_data_path("data/results/weatherlab/analysis")
+        ensure_directory(analysis_dir)
+        analyzer.save_analysis_results(rafael_data, "rafael_data.csv", "rafael_data")
+        analyzer.save_analysis_results(tracks_plot, "tracks_plot.png", "tracks_plot")
         analyzer.save_analysis_results(
-            rafael_data, analysis_dir / "rafael_data.csv", "rafael_data"
+            intensity_plot, "intensity_plot.png", "intensity_plot"
         )
+        analyzer.save_analysis_results(spread_plot, "spread_plot.png", "spread_plot")
         analyzer.save_analysis_results(
-            tracks_plot, analysis_dir / "tracks_plot.png", "tracks_plot"
-        )
-        analyzer.save_analysis_results(
-            intensity_plot, analysis_dir / "intensity_plot.png", "intensity_plot"
-        )
-        analyzer.save_analysis_results(
-            spread_plot, analysis_dir / "spread_plot.png", "spread_plot"
-        )
-        analyzer.save_analysis_results(
-            dashboard_plot, analysis_dir / "dashboard_plot.png", "dashboard_plot"
+            dashboard_plot, "dashboard_plot.png", "dashboard_plot"
         )
 
         print("\n" + "=" * 60)
