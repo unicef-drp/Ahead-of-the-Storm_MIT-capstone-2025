@@ -119,6 +119,7 @@ env/
 *.geojson
 *.shp
 *.tif
+*.png
 
 # Allow geojson files in data/raw/sinapred
 !data/raw/sinapred/*.geojson
