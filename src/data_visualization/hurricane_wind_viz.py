@@ -13,34 +13,8 @@ from src.utils.hurricane_geom import (
     roundcorner_smooth,
     superspline_smooth,
     compute_smoothed_wind_region,
+    get_nicaragua_boundary,
 )
-
-
-def get_nicaragua_polygon():
-    countries_url = "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
-    countries = requests.get(countries_url, timeout=10).json()
-    nic_poly = None
-    for feat in countries["features"]:
-        props = feat.get("properties", {})
-        if any(
-            isinstance(v, str) and v.strip().lower() == "nicaragua"
-            for v in props.values()
-        ):
-            nic_poly = shape(feat["geometry"])
-            break
-    if nic_poly is None:
-        raise RuntimeError("Could not find Nicaragua in GeoJSON.")
-    return nic_poly
-
-
-def get_nicaragua_boundary():
-    try:
-        nic_poly = get_nicaragua_polygon()
-        nicaragua_gdf = gpd.GeoDataFrame(geometry=[nic_poly], crs="EPSG:4326")
-        return nicaragua_gdf
-    except Exception as e:
-        print(f"Error getting Nicaragua boundary: {e}")
-        return None
 
 
 def find_latest_synthetic_csv():

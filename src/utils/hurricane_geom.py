@@ -4,6 +4,8 @@ from shapely.geometry import Polygon
 from shapely.ops import unary_union
 from shapely.validation import make_valid
 from scipy.interpolate import splprep, splev
+import requests
+from shapely.geometry import shape
 
 __all__ = [
     "wind_quadrant_polygon",
@@ -249,3 +251,45 @@ def compute_smoothed_wind_region(wind_polys, smoothing="bspline", **kwargs):
     # Repair any invalid geometry that may have resulted from smoothing
     continuous_shape = make_valid(continuous_shape).buffer(0)
     return continuous_shape
+
+
+def get_nicaragua_polygon():
+    """
+    Download and return the Nicaragua polygon from a public GeoJSON source.
+    Returns:
+        shapely.geometry.Polygon: Nicaragua boundary polygon
+    """
+    countries_url = "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
+    countries = requests.get(countries_url, timeout=10).json()
+    nic_poly = None
+    for feat in countries["features"]:
+        props = feat.get("properties", {})
+        if any(
+            isinstance(v, str) and v.strip().lower() == "nicaragua"
+            for v in props.values()
+        ):
+            nic_poly = shape(feat["geometry"])
+            break
+    if nic_poly is None:
+        raise RuntimeError("Could not find Nicaragua in GeoJSON.")
+    return nic_poly
+
+
+def get_nicaragua_boundary():
+    """
+    Return a GeoDataFrame with the Nicaragua boundary polygon.
+    Returns:
+        geopandas.GeoDataFrame: Nicaragua boundary
+    """
+    import geopandas as gpd
+
+    try:
+        nic_poly = get_nicaragua_polygon()
+        nicaragua_gdf = gpd.GeoDataFrame(geometry=[nic_poly], crs="EPSG:4326")
+        return nicaragua_gdf
+    except Exception as e:
+        print(f"Error getting Nicaragua boundary: {e}")
+        return None
+
+
+__all__ += ["get_nicaragua_polygon", "get_nicaragua_boundary"]
