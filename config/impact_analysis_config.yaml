@@ -14,6 +14,18 @@ impact_analysis:
     
     # Nicaragua boundary data
     nicaragua_boundary: "data/raw/osm/nicaragua_boundary.geojson"
+  wind_region:
+    smoothing_method: "bspline"  # Options: bspline, roundcorner, superspline, none
+    smoothing_params:
+      smoothing_factor: 0
+      num_points: 200
+  heatmaps:
+    grid_res: 0.1
+    color_maps:
+      hurricane: "YlOrRd"
+    alpha: 0.7
+    line_width: 0.1
+    edge_color: "grey"
 
   # Output configuration
   output:
