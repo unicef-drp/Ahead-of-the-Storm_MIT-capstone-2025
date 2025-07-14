@@ -1,11 +1,3 @@
-# Data files
-data/
-*.csv
-*.geojson
-*.shp
-*.tif
-*.log
-
 # Python
 __pycache__/
 *.py[cod]
@@ -125,6 +117,12 @@ env/
 *.nc
 *.json
 *.geojson
+*.shp
+*.tif
+*.png
+
+# Allow geojson files in data/raw/sinapred
+!data/raw/sinapred/*.geojson
 
 # Logs
 *.log 

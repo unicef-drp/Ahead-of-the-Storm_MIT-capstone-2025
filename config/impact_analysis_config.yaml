@@ -10,7 +10,7 @@ impact_analysis:
       original_file: "data/preprocessed/weatherlab/processed/processed_FNV3_2024_11_04_00_00_ensemble_data.csv"
     
     # School data source
-    school_data: "data/raw/osm/schools.geojson"
+    school_data: "data/raw/sinapred/nic_schools.geojson"
     
     # Nicaragua boundary data
     nicaragua_boundary: "data/raw/osm/nicaragua_boundary.geojson"
