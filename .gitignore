@@ -128,3 +128,7 @@ env/
 
 # Logs
 *.log 
+
+# Tests
+tests/*
+tests/

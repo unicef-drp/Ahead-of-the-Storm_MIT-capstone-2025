@@ -1,0 +1,10 @@
+region:
+  lat_min: 10.0
+  lat_max: 15.0
+  lon_min: -88.0
+  lon_max: -83.0
+forecast_hour: 24
+run_time: 6
+raw_data_dir: data/raw/rainfall/
+processed_data_dir: data/preprocessed/rainfall/
+results_dir: data/results/rainfall/ 
