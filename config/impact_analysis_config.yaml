@@ -114,3 +114,7 @@ impact_analysis:
     
     # Whether to save intermediate data
     save_intermediate: false 
+
+school_rasterization:
+  input_geojson: data/raw/sinapred/nic_schools.geojson
+  output_tiff: data/results/impact_analysis/schools_rasterized.tif 
