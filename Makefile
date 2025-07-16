@@ -41,6 +41,10 @@ plot-synthetic-trajectory:
 download-landslide-data:
 	conda run -n $(ENV_NAME) python -m src.data_prep.download_landslide_data
 
+# Create landslide heatmap visualization
+plot-landslide-heatmap:
+	conda run -n $(ENV_NAME) python -m src.data_visualization.landslide_heatmap
+
 # Test landslide downloader functionality
 test-landslide-download:
 	conda run -n $(ENV_NAME) python tests/test_landslide_download.py
