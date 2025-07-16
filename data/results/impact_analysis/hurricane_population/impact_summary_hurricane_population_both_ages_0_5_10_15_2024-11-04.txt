@@ -1,0 +1,10 @@
+Impact summary for hurricane_population_both_ages_0_5_10_15_2024-11-04
+Forecast time: 2024-11-04
+Vulnerability type: population
+Age groups: [0, 5, 10, 15]
+Gender: both
+
+Results:
+Expected affected: 179498.58
+Best case (min): 1452.98 (ensemble member 20.0)
+Worst case (max): 888813.35 (ensemble member 27.0)
