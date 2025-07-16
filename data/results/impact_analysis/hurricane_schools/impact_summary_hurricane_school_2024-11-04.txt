@@ -1,0 +1,8 @@
+Impact summary for hurricane_school_2024-11-04
+Forecast time: 2024-11-04
+Vulnerability type: school
+
+Results:
+Expected affected: 718.12
+Best case (min): 47.00 (ensemble member 31.0)
+Worst case (max): 4525.00 (ensemble member 27.0)
