@@ -1,0 +1,69 @@
+# Landslide hazard data configuration for NASA LHASA-F
+# Landslide Hazard Assessment for Situational Awareness - Future
+
+# NASA LHASA-F service configuration
+nasa_service:
+  base_url: "https://maps.nccs.nasa.gov/image01/rest/services"
+  service_name: "lhasa20"
+  layer_name: "tomorrow"
+  layer_id: 3  # Image layer with landslide predictions
+  supported_formats: ["PNG32", "PNG24", "PNG", "JPG", "DIB", "TIFF", "EMF", "PS", "PDF", "GIF", "SVG", "SVGZ", "BMP"]
+  preferred_format: "TIFF"  # Use TIFF for direct GeoTIFF download
+  
+# Nicaragua bounding box (approximate)
+nicaragua_bbox:
+  # Geographic coordinates (WGS84)
+  lat_min: 10.7
+  lat_max: 15.0
+  lon_min: -87.7
+  lon_max: -82.7
+  
+  # Web Mercator coordinates (EPSG:3857) - calculated from geographic
+  # These will be calculated programmatically
+  web_mercator:
+    x_min: null  # Will be calculated
+    y_min: null  # Will be calculated
+    x_max: null  # Will be calculated
+    y_max: null  # Will be calculated
+
+# Export parameters
+export:
+  image_size: [1024, 1024]  # [width, height] in pixels
+  max_image_size: [4096, 4096]  # Service limit
+  spatial_reference: "102100"  # Web Mercator (EPSG:3857)
+  target_spatial_reference: "4326"  # WGS84 for analysis
+  dpi: 96
+  transparent: false
+
+# Data processing
+processing:
+  # Whether to process and georeference after download
+  process_after_download: true
+  # Whether to reproject to target spatial reference
+  reproject_to_wgs84: true
+  # Whether to clip to Nicaragua boundary
+  clip_to_nicaragua: true
+  # Output resolution in meters (if reprojecting)
+  target_resolution: 1000  # 1km resolution
+
+# Output settings
+output:
+  raw_data_dir: "data/raw/landslide"
+  processed_data_dir: "data/preprocessed/landslide"
+  file_format: "tif"
+  filename_prefix: "nasa_lhasa"
+  include_timestamp: true
+  
+# Error handling
+error_handling:
+  max_retries: 3
+  retry_delay_seconds: 5
+  timeout_seconds: 300
+  save_failed_downloads: true
+  failed_downloads_file: "logs/failed_landslide_downloads.txt"
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "landslide_download.log" 

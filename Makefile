@@ -37,6 +37,16 @@ create-synthetic-hurricane:
 plot-synthetic-trajectory:
 	conda run -n $(ENV_NAME) python src/data_prep/plot_single_trajectory.py
 
+# Download NASA LHASA-F landslide hazard data
+download-landslide-data:
+	conda run -n $(ENV_NAME) python -m src.data_prep.download_landslide_data
+
+# Test landslide downloader functionality
+test-landslide-download:
+	conda run -n $(ENV_NAME) python tests/test_landslide_download.py
+
+# Download all data (OSM, population, hurricane, and landslide)
+download-data-all-complete: download-data-osm download-data-population download-data-hurricane download-landslide-data
 
 # Remove the environment (for cleanup)
 clean:
