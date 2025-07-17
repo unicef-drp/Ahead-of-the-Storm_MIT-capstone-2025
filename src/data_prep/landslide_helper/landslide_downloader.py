@@ -9,349 +9,189 @@ service and convert it to georeferenced GeoTIFF format for analysis.
 import requests
 import numpy as np
 from datetime import datetime
-from typing import Dict, Optional, Any, Tuple
+from typing import Dict, Optional, Any
 import time
 import os
 from pathlib import Path
+import re
+from bs4 import BeautifulSoup
 
 from src.utils.config_utils import load_config, get_config_value
 from src.utils.logging_utils import setup_logging, get_logger
-from src.utils.path_utils import ensure_directory, get_data_path, create_output_filename
-
+from src.utils.path_utils import ensure_directory, get_data_path
 
 class LandslideDownloader:
-    """Downloader for NASA LHASA-F landslide hazard prediction data."""
+    """Downloader for NASA LHASA-F landslide hazard prediction data (direct download)."""
 
     def __init__(self, config_path: str = "config/landslide_config.yaml"):
-        """Initialize the landslide downloader."""
         self.config = load_config(config_path)
         self.logger = setup_logging(__name__)
         self.session = requests.Session()
         self._setup_directories()
-        self._calculate_web_mercator_bbox()
 
     def _setup_directories(self):
-        """Create output directories if they don't exist."""
         raw_dir = get_config_value(
             self.config, "output.raw_data_dir", "data/raw/landslide"
         )
         processed_dir = get_config_value(
             self.config, "output.processed_data_dir", "data/preprocessed/landslide"
         )
-        
         self.raw_dir = get_data_path(raw_dir)
         self.processed_dir = get_data_path(processed_dir)
-        
         ensure_directory(self.raw_dir)
         ensure_directory(self.processed_dir)
-        
         self.logger.info(f"Raw data directory: {self.raw_dir}")
         self.logger.info(f"Processed data directory: {self.processed_dir}")
 
-    def _calculate_web_mercator_bbox(self):
-        """Calculate Web Mercator bounding box from geographic coordinates."""
+    def _list_available_files(self) -> list:
+        """List available GeoTIFF files in the NASA directory."""
+        source_url = get_config_value(self.config, "source_url")
+        resp = self.session.get(source_url)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        files = []
+        for link in soup.find_all('a'):
+            href = link.get('href', '')
+            if href.endswith('.tif'):
+                files.append(href)
+        self.logger.info(f"Found {len(files)} GeoTIFF files in NASA directory.")
+        return files
+
+    def _parse_forecast_window(self, filename: str) -> Optional[int]:
+        """Parse forecast window in hours from filename."""
+        # Example: 20250716T0600+20250718T0600.tif
+        match = re.match(r"(\d{8}T\d{4})\+(\d{8}T\d{4})\.tif", filename)
+        if not match:
+            return None
+        start, end = match.groups()
         try:
-            import pyproj
-            
-            # Get geographic coordinates from config
-            lat_min = get_config_value(self.config, "nicaragua_bbox.lat_min")
-            lat_max = get_config_value(self.config, "nicaragua_bbox.lat_max")
-            lon_min = get_config_value(self.config, "nicaragua_bbox.lon_min")
-            lon_max = get_config_value(self.config, "nicaragua_bbox.lon_max")
-            
-            # Create coordinate transformers
-            wgs84_to_web_mercator = pyproj.Transformer.from_crs(
-                "EPSG:4326", "EPSG:3857", always_xy=True
-            )
-            
-            # Transform coordinates
-            x_min, y_min = wgs84_to_web_mercator.transform(lon_min, lat_min)
-            x_max, y_max = wgs84_to_web_mercator.transform(lon_max, lat_max)
-            
-            # Store in config for later use
-            self.web_mercator_bbox = {
-                "x_min": x_min,
-                "y_min": y_min,
-                "x_max": x_max,
-                "y_max": y_max
-            }
-            
-            self.logger.info(f"Web Mercator bbox: {self.web_mercator_bbox}")
-            
-        except ImportError:
-            self.logger.error("pyproj not available. Install with: pip install pyproj")
-            # Fallback to approximate values for Nicaragua
-            self.web_mercator_bbox = {
-                "x_min": -9760000,
-                "y_min": 1180000,
-                "x_max": -9200000,
-                "y_max": 1700000
-            }
-            self.logger.warning("Using approximate Web Mercator bbox for Nicaragua")
+            dt_start = datetime.strptime(start, "%Y%m%dT%H%M")
+            dt_end = datetime.strptime(end, "%Y%m%dT%H%M")
+            delta = dt_end - dt_start
+            return int(delta.total_seconds() // 3600)
+        except Exception:
+            return None
 
-    def _build_export_url(self) -> str:
-        """Build the NASA LHASA-F export URL with parameters."""
-        base_url = get_config_value(self.config, "nasa_service.base_url")
-        service_name = get_config_value(self.config, "nasa_service.service_name")
-        layer_name = get_config_value(self.config, "nasa_service.layer_name")
-        # Use the MapServer root export endpoint
-        url = f"{base_url}/{service_name}/{layer_name}/MapServer/export"
-        self.logger.debug(f"Base export URL: {url}")
-        return url
+    def _find_latest_files(self, files: list, windows: list) -> Dict[int, str]:
+        """Find the latest file for each requested forecast window (in hours)."""
+        latest = {}
+        for w in windows:
+            candidates = [f for f in files if self._parse_forecast_window(f) == w]
+            if not candidates:
+                self.logger.warning(f"No files found for {w}h forecast window.")
+                continue
+            # Sort by end time in filename
+            candidates.sort(key=lambda f: f.split('+')[1])
+            latest[w] = candidates[-1]
+        return latest
 
-    def _build_export_params(self) -> Dict[str, Any]:
-        """Build parameters for the export request."""
-        # Get bbox
-        bbox = self.web_mercator_bbox
-        bbox_str = f"{bbox['x_min']},{bbox['y_min']},{bbox['x_max']},{bbox['y_max']}"
-        
-        # Get other parameters from config
-        image_size = get_config_value(self.config, "export.image_size")
-        spatial_ref = get_config_value(self.config, "export.spatial_reference")
-        format_type = get_config_value(self.config, "nasa_service.preferred_format")
-        dpi = get_config_value(self.config, "export.dpi")
-        transparent = get_config_value(self.config, "export.transparent")
-        layer_id = get_config_value(self.config, "nasa_service.layer_id")
-        
-        params = {
-            "f": "image",
-            "bbox": bbox_str,
-            "bboxSR": spatial_ref,
-            "imageSR": spatial_ref,
-            "size": f"{image_size[0]},{image_size[1]}",
-            "format": format_type,
-            "dpi": dpi,
-            "transparent": str(transparent).lower(),
-            "layers": f"show:{layer_id}"
-        }
-        
-        self.logger.debug(f"Export parameters: {params}")
-        return params
-
-    def _download_tiff(self, url: str, params: Dict[str, Any]) -> Optional[bytes]:
-        """Download TIFF data from NASA LHASA-F service."""
-        max_retries = get_config_value(self.config, "error_handling.max_retries", 3)
-        retry_delay = get_config_value(self.config, "error_handling.retry_delay_seconds", 5)
-        timeout = get_config_value(self.config, "error_handling.timeout_seconds", 300)
-        
-        for attempt in range(max_retries):
-            try:
-                self.logger.info(f"Downloading landslide data (attempt {attempt + 1})")
-                
-                response = self.session.get(url, params=params, timeout=timeout)
-                response.raise_for_status()
-                
-                # Check if we got an image or an error page
-                content_type = response.headers.get('content-type', '')
-                if 'text/html' in content_type:
-                    self.logger.error(f"Received HTML instead of image: {response.text[:200]}")
-                    return None
-                
-                self.logger.info(f"Successfully downloaded {len(response.content)} bytes")
-                return response.content
-                
-            except requests.exceptions.RequestException as e:
-                self.logger.warning(f"Download attempt {attempt + 1} failed: {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay * (2**attempt))
-                else:
-                    self.logger.error(f"All {max_retries} download attempts failed")
-                    return None
-
-    def _save_raw_tiff(self, tiff_data: bytes) -> str:
-        """Save raw TIFF data to file."""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"nasa_lhasa_raw_{timestamp}.tif"
-        filepath = self.raw_dir / filename
-        
-        with open(filepath, "wb") as f:
-            f.write(tiff_data)
-        
-        self.logger.info(f"Saved raw TIFF to: {filepath}")
-        return str(filepath)
-
-    def _check_georeferencing(self, tiff_path: str) -> bool:
-        """Check if TIFF has proper georeferencing."""
-        try:
-            import rasterio
-            
-            with rasterio.open(tiff_path) as src:
-                # Check if CRS is defined
-                if src.crs is None:
-                    self.logger.warning("TIFF has no CRS information")
-                    return False
-                
-                # Check if transform is defined
-                if src.transform is None:
-                    self.logger.warning("TIFF has no transform information")
-                    return False
-                
-                self.logger.info(f"TIFF is georeferenced with CRS: {src.crs}")
-                return True
-                
-        except ImportError:
-            self.logger.error("rasterio not available. Install with: pip install rasterio")
-            return False
-        except Exception as e:
-            self.logger.error(f"Error checking georeferencing: {e}")
+    def _download_file(self, url: str, out_path: Path) -> bool:
+        """Download a file from URL to out_path."""
+        self.logger.info(f"Downloading {url} ...")
+        resp = self.session.get(url, stream=True)
+        if resp.status_code == 200:
+            with open(out_path, 'wb') as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            self.logger.info(f"Saved to {out_path}")
+            return True
+        else:
+            self.logger.error(f"Failed to download {url}: {resp.status_code}")
             return False
 
-    def _georeference_tiff(self, tiff_path: str) -> str:
-        """Add georeferencing to TIFF if missing."""
+    def download_landslide_data(self) -> Optional[list]:
+        """Download the latest landslide hazard GeoTIFF(s) for the configured forecast window(s), clip to Nicaragua. Avoid redownloading if file exists."""
         try:
-            import rasterio
-            from rasterio.transform import from_bounds
-            
-            # Get bbox in Web Mercator
-            bbox = self.web_mercator_bbox
-            
-            # Read the TIFF
-            with rasterio.open(tiff_path) as src:
-                data = src.read()
-                height, width = data.shape[1], data.shape[2]
-            
-            # Calculate transform from bounds
-            transform = from_bounds(
-                bbox['x_min'], bbox['y_min'], bbox['x_max'], bbox['y_max'],
-                width, height
-            )
-            
-            # Create georeferenced output path
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_filename = f"nasa_lhasa_georeferenced_{timestamp}.tif"
-            output_path = self.raw_dir / output_filename
-            
-            # Write georeferenced TIFF
-            with rasterio.open(
-                output_path,
-                'w',
-                driver='GTiff',
-                height=height,
-                width=width,
-                count=data.shape[0],
-                dtype=data.dtype,
-                crs='EPSG:3857',
-                transform=transform
-            ) as dst:
-                dst.write(data)
-            
-            self.logger.info(f"Georeferenced TIFF saved to: {output_path}")
-            return str(output_path)
-            
-        except ImportError:
-            self.logger.error("rasterio not available. Install with: pip install rasterio")
-            return tiff_path
-        except Exception as e:
-            self.logger.error(f"Error georeferencing TIFF: {e}")
-            return tiff_path
-
-    def _reproject_to_wgs84(self, tiff_path: str) -> str:
-        """Reproject TIFF to WGS84 (EPSG:4326)."""
-        try:
-            import rasterio
-            from rasterio.warp import calculate_default_transform, reproject, Resampling
-            
-            # Read source
-            with rasterio.open(tiff_path) as src:
-                # Calculate transform for WGS84
-                dst_crs = 'EPSG:4326'
-                transform, width, height = calculate_default_transform(
-                    src.crs, dst_crs, src.width, src.height, *src.bounds
-                )
-                
-                # Create output path
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                output_filename = f"nasa_lhasa_wgs84_{timestamp}.tif"
-                output_path = self.processed_dir / output_filename
-                
-                # Reproject
-                with rasterio.open(
-                    output_path,
-                    'w',
-                    driver='GTiff',
-                    height=height,
-                    width=width,
-                    count=src.count,
-                    dtype=src.dtypes[0],
-                    crs=dst_crs,
-                    transform=transform
-                ) as dst:
-                    reproject(
-                        source=rasterio.band(src, 1),
-                        destination=rasterio.band(dst, 1),
-                        src_transform=src.transform,
-                        src_crs=src.crs,
-                        dst_transform=transform,
-                        dst_crs=dst_crs,
-                        resampling=Resampling.nearest
-                    )
-            
-            self.logger.info(f"Reprojected TIFF saved to: {output_path}")
-            return str(output_path)
-            
-        except ImportError:
-            self.logger.error("rasterio not available. Install with: pip install rasterio")
-            return tiff_path
-        except Exception as e:
-            self.logger.error(f"Error reprojecting TIFF: {e}")
-            return tiff_path
-
-    def download_landslide_data(self) -> Optional[str]:
-        """Download landslide hazard data from NASA LHASA-F."""
-        try:
-            # Build URL and parameters
-            url = self._build_export_url()
-            params = self._build_export_params()
-            
-            # Download TIFF data
-            tiff_data = self._download_tiff(url, params)
-            if tiff_data is None:
-                self.logger.error("Failed to download TIFF data")
-                return None
-            
-            # Save raw TIFF
-            raw_tiff_path = self._save_raw_tiff(tiff_data)
-            
-            # Check georeferencing
-            if not self._check_georeferencing(raw_tiff_path):
-                self.logger.info("Adding georeferencing to TIFF")
-                raw_tiff_path = self._georeference_tiff(raw_tiff_path)
-            
-            # Process if enabled
-            if get_config_value(self.config, "processing.process_after_download", True):
-                self.logger.info("Processing downloaded data")
-                
-                # Reproject to WGS84 if enabled
-                if get_config_value(self.config, "processing.reproject_to_wgs84", True):
-                    final_path = self._reproject_to_wgs84(raw_tiff_path)
+            source_url = get_config_value(self.config, "source_url")
+            forecast_windows = get_config_value(self.config, "forecast_windows", [48])
+            files = self._list_available_files()
+            latest_files = self._find_latest_files(files, forecast_windows)
+            downloaded = []
+            for w, fname in latest_files.items():
+                # Parse forecast window and start time from NASA filename
+                match = re.match(r"(\d{8}T\d{4})\+(\d{8}T\d{4})", fname)
+                if match:
+                    start, _ = match.groups()
+                    raw_name = f"landslide_forecast_48h_{start}.tif"
                 else:
-                    final_path = raw_tiff_path
-                
-                self.logger.info(f"Landslide data processing completed: {final_path}")
-                return final_path
+                    raw_name = f"landslide_forecast_48h_unknown.tif"
+                raw_file = self.raw_dir / raw_name
+                if not raw_file.exists():
+                    file_url = source_url + fname
+                    if self._download_file(file_url, raw_file):
+                        self.logger.info(f"Downloaded new file for {w}h: {raw_file}")
+                    else:
+                        self.logger.error(f"Failed to download file for {w}h: {file_url}")
+                        continue
+                else:
+                    self.logger.info(f"Found existing raw file for {w}h: {raw_file}, skipping download.")
+                # Clip to Nicaragua
+                # Use the same start time for processed file
+                match = re.match(r"landslide_forecast_48h_(\d{8}T\d{4})\.tif", raw_file.name)
+                if match:
+                    start = match.group(1)
+                    processed_name = f"landslide_forecast_48h_{start}_nicaragua.tif"
+                else:
+                    processed_name = f"landslide_forecast_48h_unknown_nicaragua.tif"
+                clipped_path = self._clip_to_nicaragua(str(raw_file), processed_name)
+                downloaded.append(clipped_path)
+            if downloaded:
+                self.logger.info(f"Downloaded and processed files: {downloaded}")
+                return downloaded
             else:
-                self.logger.info(f"Landslide data download completed: {raw_tiff_path}")
-                return raw_tiff_path
-                
+                self.logger.error("No files downloaded or processed.")
+                return None
         except Exception as e:
             self.logger.error(f"Error during landslide data download: {e}")
             return None
 
     def get_download_summary(self) -> Dict[str, Any]:
-        """Get a summary of downloaded landslide data."""
         raw_files = list(self.raw_dir.glob("*.tif"))
         processed_files = list(self.processed_dir.glob("*.tif"))
-        
         total_size = sum(f.stat().st_size for f in raw_files + processed_files if f.exists())
-        
         summary = {
             "raw_files_count": len(raw_files),
             "processed_files_count": len(processed_files),
             "total_size_mb": round(total_size / (1024 * 1024), 2),
-            "data_source": "NASA LHASA-F",
-            "coverage": "Nicaragua",
+            "data_source": "NASA LHASA-F (direct)",
+            "coverage": "Global",
             "raw_directory": str(self.raw_dir),
             "processed_directory": str(self.processed_dir),
         }
-        
         return summary 
+
+    def _clip_to_nicaragua(self, tiff_path: str, output_filename: str) -> str:
+        """Clip the raster to the Nicaragua bounding box and save with provided filename."""
+        try:
+            import rasterio
+            from rasterio.mask import mask
+            from shapely.geometry import box, mapping
+            bbox = self.config['nicaragua_bbox']
+            lat_min = bbox['lat_min']
+            lat_max = bbox['lat_max']
+            lon_min = bbox['lon_min']
+            lon_max = bbox['lon_max']
+            with rasterio.open(tiff_path) as src:
+                raster_bounds = src.bounds
+                self.logger.info(f"Raster bounds: {raster_bounds}")
+                self.logger.info(f"Requested clip bbox: ({lon_min}, {lat_min}, {lon_max}, {lat_max})")
+                clip_geom = box(lon_min, lat_min, lon_max, lat_max)
+                out_image, out_transform = mask(src, [mapping(clip_geom)], crop=True, nodata=src.nodata)
+                out_meta = src.meta.copy()
+                out_meta.update({
+                    "driver": "GTiff",
+                    "height": out_image.shape[1],
+                    "width": out_image.shape[2],
+                    "transform": out_transform
+                })
+                output_path = self.processed_dir / output_filename
+                with rasterio.open(output_path, 'w', **out_meta) as dst:
+                    dst.write(out_image)
+            self.logger.info(f"Clipped TIFF saved to: {output_path}")
+            return str(output_path)
+        except ImportError:
+            self.logger.error("rasterio or shapely not available. Install with: pip install rasterio shapely")
+            return tiff_path
+        except Exception as e:
+            self.logger.error(f"Error clipping TIFF: {e}")
+            return tiff_path 
