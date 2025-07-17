@@ -126,3 +126,7 @@ env/
 
 # Logs
 *.log 
+
+# GADM shapefiles and archives
+/gadm41_NIC_shp/
+/gadm41_NIC_shp.zip 

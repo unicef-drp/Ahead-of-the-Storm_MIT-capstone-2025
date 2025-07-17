@@ -161,8 +161,14 @@ class HurricaneImpactLayer(ImpactLayer):
         date_str = str(forecast_time).replace(":", "-").replace(" ", "_")
         for case, idx in zip(["best", "worst"], [best_idx, worst_idx]):
             region = member_regions[idx]
-            affected = int(round(impacts[idx]))
-            print(f"{case.title()} case affected {vuln_name}s: {affected}")
+            impact_val = impacts[idx]
+            if np.isnan(impact_val):
+                affected_str = "N/A"
+                print(f"{case.title()} case affected {vuln_name}s: N/A (NaN impact)")
+            else:
+                affected = int(round(impact_val))
+                affected_str = str(affected)
+                print(f"{case.title()} case affected {vuln_name}s: {affected}")
             fig, ax = plt.subplots(figsize=(12, 10))
             # Plot vulnerability grid (not clipped)
             if value_col in vulnerability_grid.columns:
@@ -200,7 +206,7 @@ class HurricaneImpactLayer(ImpactLayer):
                 ax.set_xlim(minx, maxx)
                 ax.set_ylim(miny, maxy)
             ax.annotate(
-                f"Affected {vuln_name}s: {affected}",
+                f"Affected {vuln_name}s: {affected_str}",
                 xy=(0.99, 0.01),
                 xycoords="axes fraction",
                 fontsize=14,
