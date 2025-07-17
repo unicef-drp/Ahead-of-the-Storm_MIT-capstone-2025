@@ -130,3 +130,7 @@ env/
 # GADM shapefiles and archives
 /gadm41_NIC_shp/
 /gadm41_NIC_shp.zip 
+
+# Allow tracking of data/preprocessed/weatherlab files
+!data/preprocessed/weatherlab/
+!data/preprocessed/weatherlab/** 
