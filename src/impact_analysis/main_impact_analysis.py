@@ -1,294 +1,111 @@
 import os
-from src.impact_analysis.layers.population import PopulationVulnerabilityLayer
-from src.impact_analysis.layers.schools import (
-    SchoolVulnerabilityLayer,
-    SchoolPopulationVulnerabilityLayer,
-)
-from src.impact_analysis.layers.health_facilities import (
-    HealthFacilityVulnerabilityLayer,
-)
-from src.impact_analysis.layers.shelters import ShelterVulnerabilityLayer
-from src.impact_analysis.analysis.impact import HurricaneImpactLayer
-from src.impact_analysis.layers.poverty import (
-    PovertyVulnerabilityLayer,
-    SeverePovertyVulnerabilityLayer,
-)
+import sys
+import yaml
+import pandas as pd
+from pathlib import Path
 
+from src.impact_analysis.helper.factories import (
+    get_exposure_layer,
+    get_vulnerability_layer,
+    get_impact_layer,
+)
+from src.utils.config_utils import load_config, get_config_value
+from src.utils.path_utils import get_data_path
 
 def ensure_subdir(base_dir, subfolder):
     subdir = os.path.join(base_dir, subfolder)
     os.makedirs(subdir, exist_ok=True)
     return subdir
 
+def run_analysis(config, exposure_type, vuln_type, hurricane_df, forecast_time, output_dir, cache_dir):
+    # Create exposure, vulnerability, and impact objects
+    exposure = get_exposure_layer(exposure_type, hurricane_df, forecast_time, config, cache_dir)
+    vulnerability = get_vulnerability_layer(vuln_type, config, cache_dir)
+    impact = get_impact_layer(exposure, vulnerability, config)
 
-def main_impact_analysis(config, exposure, output_dir, cache_dir):
-    # --- Hurricane Exposure (shared across all analyses) ---
-    print("\n[Hurricane Exposure Layer]")
-    exposure.plot(output_dir=output_dir)
+    # Output subdir naming
+    output_subdir = ensure_subdir(output_dir, f"{exposure_type}_{vuln_type}")
 
-    # --- Schools ---
-    output_schools = ensure_subdir(output_dir, "hurricane_schools")
-    school_vuln = SchoolVulnerabilityLayer(config, cache_dir=cache_dir)
-    school_impact = HurricaneImpactLayer(exposure, school_vuln, config)
-    print("\n[Vulnerability Layer: Schools]")
-    school_vuln.plot(output_dir=output_schools)
-    print("\n[Impact Layer: Schools]")
-    school_impact.plot(output_dir=output_schools)
-    print("\n[Binary Probability: Schools]")
-    school_impact.plot_binary_probability(output_dir=output_schools)
-    print("\n[Best/Worst Case Overlay Plots: Schools]")
-    school_impact.plot_best_worst_case_overlay(output_dir=output_schools)
-    print(f"\nExpected affected schools: {school_impact.expected_impact():.2f}")
-    print(f"Best case (min) affected schools: {school_impact.best_case():.2f}")
-    print(f"Worst case (max) affected schools: {school_impact.worst_case():.2f}")
-    school_impact.save_impact_summary(output_dir=output_schools)
+    # Run and plot all layers
+    print(f"\n[Exposure Layer: {exposure_type}]")
+    exposure.plot(output_dir=output_subdir)
+    print(f"\n[Vulnerability Layer: {vuln_type}]")
+    vulnerability.plot(output_dir=output_subdir)
+    print(f"\n[Impact Layer: {exposure_type} x {vuln_type}]")
+    impact.plot(output_dir=output_subdir)
+    print(f"\n[Binary Probability: {exposure_type} x {vuln_type}]")
+    impact.plot_binary_probability(output_dir=output_subdir)
+    print(f"\n[Best/Worst Case Overlay Plots: {exposure_type} x {vuln_type}]")
+    impact.plot_best_worst_case_overlay(output_dir=output_subdir)
+    print(f"\nExpected impact: {impact.expected_impact():.2f}")
+    print(f"Best case (min): {impact.best_case():.2f}")
+    print(f"Worst case (max): {impact.worst_case():.2f}")
+    impact.save_impact_summary(output_dir=output_subdir)
 
-    # --- School Population ---
-    output_schoolpop = ensure_subdir(output_dir, "hurricane_schoolpopulation")
-    school_pop_vuln = SchoolPopulationVulnerabilityLayer(config, cache_dir=cache_dir)
-    school_pop_impact = HurricaneImpactLayer(exposure, school_pop_vuln, config)
-    print("\n[Vulnerability Layer: School Population]")
-    school_pop_vuln.plot(output_dir=output_schoolpop)
-    print("\n[Impact Layer: School Population]")
-    school_pop_impact.plot(output_dir=output_schoolpop)
-    print("\n[Binary Probability: School Population]")
-    school_pop_impact.plot_binary_probability(output_dir=output_schoolpop)
-    print("\n[Best/Worst Case Overlay Plots: School Population]")
-    school_pop_impact.plot_best_worst_case_overlay(output_dir=output_schoolpop)
-    print(
-        f"\nExpected affected school people: {school_pop_impact.expected_impact():.2f}"
-    )
-    print(
-        f"Best case (min) affected school people: {school_pop_impact.best_case():.2f}"
-    )
-    print(
-        f"Worst case (max) affected school people: {school_pop_impact.worst_case():.2f}"
-    )
-    school_pop_impact.save_impact_summary(output_dir=output_schoolpop)
+def main():
+    # Load configuration
+    config_path = Path("config/impact_analysis_config.yaml")
+    if not config_path.exists():
+        print(f"Error: Configuration file not found: {config_path}")
+        sys.exit(1)
+    config = load_config(str(config_path))
 
-    # --- Health Facilities (count) ---
-    output_health = ensure_subdir(output_dir, "hurricane_healthfacilities")
-    health_vuln = HealthFacilityVulnerabilityLayer(
-        config, weighted_by_population=False, cache_dir=cache_dir
+    # Get output and cache directories
+    output_dir = get_config_value(
+        config, "impact_analysis.output.base_directory", "data/results/impact_analysis"
     )
-    health_impact = HurricaneImpactLayer(exposure, health_vuln, config)
-    print("\n[Vulnerability Layer: Health Facilities]")
-    health_vuln.plot(output_dir=output_health)
-    print("\n[Impact Layer: Health Facilities]")
-    health_impact.plot(output_dir=output_health)
-    print("\n[Binary Probability: Health Facilities]")
-    health_impact.plot_binary_probability(output_dir=output_health)
-    print("\n[Best/Worst Case Overlay Plots: Health Facilities]")
-    health_impact.plot_best_worst_case_overlay(output_dir=output_health)
-    print(
-        f"\nExpected affected health facilities: {health_impact.expected_impact():.2f}"
+    cache_dir = get_config_value(
+        config,
+        "impact_analysis.output.cache_directory",
+        "data/results/impact_analysis/cache",
     )
-    print(
-        f"Best case (min) affected health facilities: {health_impact.best_case():.2f}"
-    )
-    print(
-        f"Worst case (max) affected health facilities: {health_impact.worst_case():.2f}"
-    )
-    health_impact.save_impact_summary(output_dir=output_health)
+    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(cache_dir, exist_ok=True)
 
-    # --- Health Facilities (population weighted) ---
-    output_healthpop = ensure_subdir(output_dir, "hurricane_healthfacilitiespopulation")
-    healthpop_vuln = HealthFacilityVulnerabilityLayer(
-        config, weighted_by_population=True, cache_dir=cache_dir
+    # Load hurricane data (for now, only hurricane exposure is supported)
+    hurricane_data_path = get_config_value(
+        config,
+        "impact_analysis.input.hurricane_data.synthetic_file",
+        "data/preprocessed/weatherlab/synthetic/processed_FNV3_2024_11_04_00_00_ensemble_data_synthetic.csv",
     )
-    healthpop_impact = HurricaneImpactLayer(exposure, healthpop_vuln, config)
-    print("\n[Vulnerability Layer: Health Facilities (Population Weighted)]")
-    healthpop_vuln.plot(output_dir=output_healthpop)
-    print("\n[Impact Layer: Health Facilities (Population Weighted)]")
-    healthpop_impact.plot(output_dir=output_healthpop)
-    print("\n[Binary Probability: Health Facilities (Population Weighted)]")
-    healthpop_impact.plot_binary_probability(output_dir=output_healthpop)
-    print("\n[Best/Worst Case Overlay Plots: Health Facilities (Population Weighted)]")
-    healthpop_impact.plot_best_worst_case_overlay(output_dir=output_healthpop)
-    print(
-        f"\nExpected affected health facility population: {healthpop_impact.expected_impact():.2f}"
-    )
-    print(
-        f"Best case (min) affected health facility population: {healthpop_impact.best_case():.2f}"
-    )
-    print(
-        f"Worst case (max) affected health facility population: {healthpop_impact.worst_case():.2f}"
-    )
-    healthpop_impact.save_impact_summary(output_dir=output_healthpop)
+    hurricane_file = get_data_path(hurricane_data_path)
+    if not hurricane_file.exists():
+        hurricane_data_path = get_config_value(
+            config,
+            "impact_analysis.input.hurricane_data.original_file",
+            "data/preprocessed/weatherlab/processed/processed_FNV3_2024_11_04_00_00_ensemble_data.csv",
+        )
+        hurricane_file = get_data_path(hurricane_data_path)
+    if not hurricane_file.exists():
+        print(f"Error: Hurricane data file not found: {hurricane_file}")
+        sys.exit(1)
+    hurricane_df = pd.read_csv(hurricane_file)
+    available_forecasts = hurricane_df["forecast_time"].unique()
+    if len(available_forecasts) == 0:
+        print("Error: No forecast times found in hurricane data")
+        sys.exit(1)
+    chosen_forecast = available_forecasts[0]
+    print(f"Using forecast time: {chosen_forecast}")
 
-    # --- Shelters (count) ---
-    output_shelters = ensure_subdir(output_dir, "hurricane_shelters")
-    shelter_vuln = ShelterVulnerabilityLayer(
-        config, weighted_by_capacity=False, cache_dir=cache_dir
-    )
-    shelter_impact = HurricaneImpactLayer(exposure, shelter_vuln, config)
-    print("\n[Vulnerability Layer: Shelters]")
-    shelter_vuln.plot(output_dir=output_shelters)
-    print("\n[Impact Layer: Shelters]")
-    shelter_impact.plot(output_dir=output_shelters)
-    print("\n[Binary Probability: Shelters]")
-    shelter_impact.plot_binary_probability(output_dir=output_shelters)
-    print("\n[Best/Worst Case Overlay Plots: Shelters]")
-    shelter_impact.plot_best_worst_case_overlay(output_dir=output_shelters)
-    print(f"\nExpected affected shelters: {shelter_impact.expected_impact():.2f}")
-    print(f"Best case (min) affected shelters: {shelter_impact.best_case():.2f}")
-    print(f"Worst case (max) affected shelters: {shelter_impact.worst_case():.2f}")
-    shelter_impact.save_impact_summary(output_dir=output_shelters)
+    # Run all combos from config
+    runs = config.get("impact_analysis", {}).get("runs", [])
+    if not runs:
+        print("No runs specified in config under impact_analysis.runs")
+        sys.exit(1)
+    for run in runs:
+        exposure_type = run["exposure"]
+        for vuln_type in run["vulnerabilities"]:
+            print(f"\n=== Running analysis: Exposure={exposure_type}, Vulnerability={vuln_type} ===")
+            run_analysis(
+                config,
+                exposure_type,
+                vuln_type,
+                hurricane_df,
+                chosen_forecast,
+                output_dir,
+                cache_dir,
+            )
+    print(f"\nImpact analysis complete! Results saved to: {output_dir}")
 
-    # --- Shelters (capacity weighted) ---
-    output_shelterspop = ensure_subdir(output_dir, "hurricane_shelterspopulation")
-    shelterpop_vuln = ShelterVulnerabilityLayer(
-        config, weighted_by_capacity=True, cache_dir=cache_dir
-    )
-    shelterpop_impact = HurricaneImpactLayer(exposure, shelterpop_vuln, config)
-    print("\n[Vulnerability Layer: Shelters (Capacity Weighted)]")
-    shelterpop_vuln.plot(output_dir=output_shelterspop)
-    print("\n[Impact Layer: Shelters (Capacity Weighted)]")
-    shelterpop_impact.plot(output_dir=output_shelterspop)
-    print("\n[Binary Probability: Shelters (Capacity Weighted)]")
-    shelterpop_impact.plot_binary_probability(output_dir=output_shelterspop)
-    print("\n[Best/Worst Case Overlay Plots: Shelters (Capacity Weighted)]")
-    shelterpop_impact.plot_best_worst_case_overlay(output_dir=output_shelterspop)
-    print(
-        f"\nExpected affected shelter capacity: {shelterpop_impact.expected_impact():.2f}"
-    )
-    print(
-        f"Best case (min) affected shelter capacity: {shelterpop_impact.best_case():.2f}"
-    )
-    print(
-        f"Worst case (max) affected shelter capacity: {shelterpop_impact.worst_case():.2f}"
-    )
-    shelterpop_impact.save_impact_summary(output_dir=output_shelterspop)
-
-    # --- Population ---
-    output_population = ensure_subdir(output_dir, "hurricane_population")
-    pop_vuln = PopulationVulnerabilityLayer(
-        config, age_groups=list(range(0, 85, 5)), gender="both", cache_dir=cache_dir
-    )
-    pop_impact = HurricaneImpactLayer(exposure, pop_vuln, config)
-    print("\n[Vulnerability Layer: Population]")
-    pop_vuln.plot(output_dir=output_population)
-    print("\n[Impact Layer: Population]")
-    pop_impact.plot(output_dir=output_population)
-    print("\n[Binary Probability: Population]")
-    pop_impact.plot_binary_probability(output_dir=output_population)
-    print("\n[Best/Worst Case Overlay Plots: Population]")
-    pop_impact.plot_best_worst_case_overlay(output_dir=output_population)
-    print(f"\nExpected affected people: {pop_impact.expected_impact():.2f}")
-    print(f"Best case (min) affected people: {pop_impact.best_case():.2f}")
-    print(f"Worst case (max) affected people: {pop_impact.worst_case():.2f}")
-    pop_impact.save_impact_summary(output_dir=output_population)
-
-    # --- Poverty (Headcount Ratio, all ages) ---
-    output_poverty = ensure_subdir(output_dir, "hurricane_poverty")
-    poverty_vuln = PovertyVulnerabilityLayer(
-        config, age_groups=list(range(0, 85, 5)), gender="both", cache_dir=cache_dir
-    )
-    poverty_impact = HurricaneImpactLayer(exposure, poverty_vuln, config)
-    print("\n[Vulnerability Layer: Poverty (Headcount Ratio, all ages)]")
-    poverty_vuln.plot(output_dir=output_poverty)
-    print("\n[Impact Layer: Poverty (Headcount Ratio, all ages)]")
-    poverty_impact.plot(output_dir=output_poverty)
-    print("\n[Binary Probability: Poverty (Headcount Ratio, all ages)]")
-    poverty_impact.plot_binary_probability(output_dir=output_poverty)
-    print("\n[Best/Worst Case Overlay Plots: Poverty (Headcount Ratio, all ages)]")
-    poverty_impact.plot_best_worst_case_overlay(output_dir=output_poverty)
-    print(
-        f"\nExpected affected people in poverty: {poverty_impact.expected_impact():.2f}"
-    )
-    print(
-        f"Best case (min) affected people in poverty: {poverty_impact.best_case():.2f}"
-    )
-    print(
-        f"Worst case (max) affected people in poverty: {poverty_impact.worst_case():.2f}"
-    )
-    poverty_impact.save_impact_summary(output_dir=output_poverty)
-
-    # --- Poverty (Headcount Ratio, children) ---
-    output_poverty_children = ensure_subdir(output_dir, "hurricane_poverty_children")
-    poverty_children_vuln = PovertyVulnerabilityLayer(
-        config, age_groups=[0, 5, 10, 15], gender="both", cache_dir=cache_dir
-    )
-    poverty_children_impact = HurricaneImpactLayer(
-        exposure, poverty_children_vuln, config
-    )
-    print("\n[Vulnerability Layer: Poverty (Headcount Ratio, children)]")
-    poverty_children_vuln.plot(output_dir=output_poverty_children)
-    print("\n[Impact Layer: Poverty (Headcount Ratio, children)]")
-    poverty_children_impact.plot(output_dir=output_poverty_children)
-    print("\n[Binary Probability: Poverty (Headcount Ratio, children)]")
-    poverty_children_impact.plot_binary_probability(output_dir=output_poverty_children)
-    print("\n[Best/Worst Case Overlay Plots: Poverty (Headcount Ratio, children)]")
-    poverty_children_impact.plot_best_worst_case_overlay(
-        output_dir=output_poverty_children
-    )
-    print(
-        f"\nExpected affected children in poverty: {poverty_children_impact.expected_impact():.2f}"
-    )
-    print(
-        f"Best case (min) affected children in poverty: {poverty_children_impact.best_case():.2f}"
-    )
-    print(
-        f"Worst case (max) affected children in poverty: {poverty_children_impact.worst_case():.2f}"
-    )
-    poverty_children_impact.save_impact_summary(output_dir=output_poverty_children)
-
-    # --- Severe Poverty (all ages) ---
-    output_severepoverty = ensure_subdir(output_dir, "hurricane_severepoverty")
-    severepoverty_vuln = SeverePovertyVulnerabilityLayer(
-        config, age_groups=list(range(0, 85, 5)), gender="both", cache_dir=cache_dir
-    )
-    severepoverty_impact = HurricaneImpactLayer(exposure, severepoverty_vuln, config)
-    print("\n[Vulnerability Layer: Severe Poverty (all ages)]")
-    severepoverty_vuln.plot(output_dir=output_severepoverty)
-    print("\n[Impact Layer: Severe Poverty (all ages)]")
-    severepoverty_impact.plot(output_dir=output_severepoverty)
-    print("\n[Binary Probability: Severe Poverty (all ages)]")
-    severepoverty_impact.plot_binary_probability(output_dir=output_severepoverty)
-    print("\n[Best/Worst Case Overlay Plots: Severe Poverty (all ages)]")
-    severepoverty_impact.plot_best_worst_case_overlay(output_dir=output_severepoverty)
-    print(
-        f"\nExpected affected people in severe poverty: {severepoverty_impact.expected_impact():.2f}"
-    )
-    print(
-        f"Best case (min) affected people in severe poverty: {severepoverty_impact.best_case():.2f}"
-    )
-    print(
-        f"Worst case (max) affected people in severe poverty: {severepoverty_impact.worst_case():.2f}"
-    )
-    severepoverty_impact.save_impact_summary(output_dir=output_severepoverty)
-
-    # --- Severe Poverty (children) ---
-    output_severepoverty_children = ensure_subdir(
-        output_dir, "hurricane_severepoverty_children"
-    )
-    severepoverty_children_vuln = SeverePovertyVulnerabilityLayer(
-        config, age_groups=[0, 5, 10, 15], gender="both", cache_dir=cache_dir
-    )
-    severepoverty_children_impact = HurricaneImpactLayer(
-        exposure, severepoverty_children_vuln, config
-    )
-    print("\n[Vulnerability Layer: Severe Poverty (children)]")
-    severepoverty_children_vuln.plot(output_dir=output_severepoverty_children)
-    print("\n[Impact Layer: Severe Poverty (children)]")
-    severepoverty_children_impact.plot(output_dir=output_severepoverty_children)
-    print("\n[Binary Probability: Severe Poverty (children)]")
-    severepoverty_children_impact.plot_binary_probability(
-        output_dir=output_severepoverty_children
-    )
-    print("\n[Best/Worst Case Overlay Plots: Severe Poverty (children)]")
-    severepoverty_children_impact.plot_best_worst_case_overlay(
-        output_dir=output_severepoverty_children
-    )
-    print(
-        f"\nExpected affected children in severe poverty: {severepoverty_children_impact.expected_impact():.2f}"
-    )
-    print(
-        f"Best case (min) affected children in severe poverty: {severepoverty_children_impact.best_case():.2f}"
-    )
-    print(
-        f"Worst case (max) affected children in severe poverty: {severepoverty_children_impact.worst_case():.2f}"
-    )
-    severepoverty_children_impact.save_impact_summary(
-        output_dir=output_severepoverty_children
-    )
+if __name__ == "__main__":
+    main()

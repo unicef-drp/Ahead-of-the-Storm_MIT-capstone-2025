@@ -19,13 +19,6 @@ impact_analysis:
     smoothing_params:
       smoothing_factor: 0
       num_points: 200
-  heatmaps:
-    grid_res: 0.1
-    color_maps:
-      hurricane: "YlOrRd"
-    alpha: 0.7
-    line_width: 0.1
-    edge_color: "grey"
 
   # Output configuration
   output:
@@ -41,76 +34,9 @@ impact_analysis:
   grid:
     # Grid resolution in degrees
     resolution_degrees: 0.1
-    
-    # Grid bounds for Nicaragua (if not using boundary file)
-    bounds:
-      lon_min: -87.7
-      lon_max: -82.7
-      lat_min: 10.7
-      lat_max: 15.1
 
-  # Heatmap visualization settings
-  heatmaps:
-    # Figure size for all heatmaps
-    figure_size: [12, 10]
-    
-    # DPI for saved images
-    dpi: 300
-    
-    # Color maps for different heatmap types
-    color_maps:
-      hurricane: "Blues"
-      school: "Greens"
-      risk: "OrRd"
-    
-    # Alpha transparency for grid cells
-    alpha: 0.7
-    
-    # Line width for grid cell edges
-    line_width: 0.1
-    
-    # Edge color for grid cells
-    edge_color: "grey"
-
-  # Risk analysis parameters
-  risk_analysis:
-    # Whether to use log scale for risk heatmaps
-    use_log_scale: true
-    
-    # Risk calculation method: "multiplication" or "weighted_sum"
-    calculation_method: "multiplication"
-    
-    # Weights for different factors (if using weighted_sum)
-    weights:
-      hurricane_probability: 0.7
-      school_concentration: 0.3
-
-  # Data processing parameters
-  data_processing:
-    # Date/time columns to parse
-    datetime_columns:
-      - "forecast_time"
-      - "valid_time"
-    
-    # Required columns for hurricane data
-    required_hurricane_columns:
-      - "latitude"
-      - "longitude"
-      - "ensemble_member"
-      - "forecast_time"
-    
-    # Required columns for school data
-    required_school_columns:
-      - "geometry"
-      - "name"
-
-  # Logging and debugging
-  logging:
-    # Log level for impact analysis modules
-    level: "INFO"
-    
-    # Whether to print debug information
-    debug: false
-    
-    # Whether to save intermediate data
-    save_intermediate: false 
+  # Analysis runs: specify which exposures and vulnerabilities to analyze
+  runs:
+    - exposure: hurricane
+      vulnerabilities: [schools, school_population, health_facilities, health_facilities_population, shelters, shelters_population, population, poverty, poverty_children, severe_poverty, severe_poverty_children]
+    # Add more exposure/vulnerability combos as needed

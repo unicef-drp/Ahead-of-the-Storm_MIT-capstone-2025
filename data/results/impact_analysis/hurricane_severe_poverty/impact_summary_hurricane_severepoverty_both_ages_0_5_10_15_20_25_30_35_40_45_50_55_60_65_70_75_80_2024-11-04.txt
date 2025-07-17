@@ -1,0 +1,10 @@
+Impact summary for hurricane_severepoverty_both_ages_0_5_10_15_20_25_30_35_40_45_50_55_60_65_70_75_80_2024-11-04
+Forecast time: 2024-11-04
+Vulnerability type: severepoverty
+Age groups: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
+Gender: both
+
+Results:
+Expected affected: 50220.81
+Best case (min): 706.06 (ensemble member 20.0)
+Worst case (max): 172764.46 (ensemble member 5.0)
