@@ -120,6 +120,7 @@ env/
 *.shp
 *.tif
 *.png
+*.gpkg
 
 # Allow geojson files in data/raw/sinapred
 !data/raw/sinapred/*.geojson
@@ -134,3 +135,7 @@ env/
 # Allow tracking of data/preprocessed/weatherlab files
 !data/preprocessed/weatherlab/
 !data/preprocessed/weatherlab/** 
+
+# Allow tracking of impact analysis results
+!data/results/impact_analysis/
+!data/results/impact_analysis/** 
