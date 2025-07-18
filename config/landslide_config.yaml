@@ -1,0 +1,43 @@
+# Landslide hazard data configuration for NASA LHASA-F
+# Landslide Hazard Assessment for Situational Awareness - Future
+
+# NASA LHASA-F direct download configuration
+source_url: "https://maps.nccs.nasa.gov/download/landslides/fcast/hazard/tif/"
+forecast_windows: [48]  # Only download 48-hour forecast for now
+
+# Nicaragua bounding box (approximate)
+nicaragua_bbox:
+  # Geographic coordinates (WGS84)
+  lat_min: 10.7
+  lat_max: 15.0
+  lon_min: -87.7
+  lon_max: -82.7
+
+# Data processing
+processing:
+  process_after_download: true
+  reproject_to_wgs84: true
+  clip_to_nicaragua: true
+  target_resolution: 1000  # 1km resolution
+
+# Output settings
+output:
+  raw_data_dir: "data/raw/landslide"
+  processed_data_dir: "data/preprocessed/landslide"
+  file_format: "tif"
+  filename_prefix: "nasa_lhasa"
+  include_timestamp: true
+
+# Error handling
+error_handling:
+  max_retries: 3
+  retry_delay_seconds: 5
+  timeout_seconds: 300
+  save_failed_downloads: true
+  failed_downloads_file: "logs/failed_landslide_downloads.txt"
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "landslide_download.log" 
