@@ -1,4 +1,5 @@
 from src.impact_analysis.layers.hurricane import HurricaneExposureLayer
+from src.impact_analysis.layers.landslide import LandslideExposureLayer
 from src.impact_analysis.layers.population import PopulationVulnerabilityLayer
 from src.impact_analysis.layers.schools import (
     SchoolVulnerabilityLayer,
@@ -10,13 +11,30 @@ from src.impact_analysis.layers.poverty import (
     PovertyVulnerabilityLayer,
     SeverePovertyVulnerabilityLayer,
 )
-from src.impact_analysis.analysis.impact import HurricaneImpactLayer
+from src.impact_analysis.analysis.hurricane_impact import HurricaneImpactLayer
+from src.impact_analysis.analysis.landslide_impact import LandslideImpactLayer
 
 
-def get_exposure_layer(exposure_type, hurricane_df, forecast_time, config, cache_dir):
+def get_exposure_layer(exposure_type, hurricane_df, forecast_time, config, cache_dir, scenario="mean"):
     if exposure_type == "hurricane":
         return HurricaneExposureLayer(hurricane_df, forecast_time, config, cache_dir)
-    # Add more exposure types (e.g., landslide, flood) as needed
+    if exposure_type == "landslide":
+        # landslide_df is not used, instead config must specify the landslide file
+        from src.utils.path_utils import get_data_path
+        import re
+        # Find the latest landslide file
+        landslide_dir = get_data_path("data/preprocessed/landslide")
+        landslide_files = list(landslide_dir.glob("landslide_forecast_48h_*_nicaragua.tif"))
+        if not landslide_files:
+            raise FileNotFoundError("No landslide data files found!")
+        # Use the most recent file
+        landslide_file = str(max(landslide_files, key=lambda x: x.stat().st_mtime))
+        return LandslideExposureLayer(
+            landslide_file=landslide_file,
+            config=config,
+            cache_dir=cache_dir,
+            resampling_method=scenario
+        )
     raise ValueError(f"Unknown exposure type: {exposure_type}")
 
 
@@ -43,10 +61,12 @@ def get_vulnerability_layer(vuln_type, config, cache_dir):
         return SeverePovertyVulnerabilityLayer(config, age_groups=list(range(0, 85, 5)), gender="both", cache_dir=cache_dir)
     if vuln_type == "severe_poverty_children":
         return SeverePovertyVulnerabilityLayer(config, age_groups=[0, 5, 10, 15], gender="both", cache_dir=cache_dir)
-    # Add more vulnerability types as needed
     raise ValueError(f"Unknown vulnerability type: {vuln_type}")
 
 
 def get_impact_layer(exposure, vulnerability, config):
-    # For now, only HurricaneImpactLayer is implemented
-    return HurricaneImpactLayer(exposure, vulnerability, config) 
+    if isinstance(exposure, HurricaneExposureLayer):
+        return HurricaneImpactLayer(exposure, vulnerability, config)
+    if isinstance(exposure, LandslideExposureLayer):
+        return LandslideImpactLayer(exposure, vulnerability, config)
+    raise ValueError(f"Unknown exposure layer type: {type(exposure)}") 

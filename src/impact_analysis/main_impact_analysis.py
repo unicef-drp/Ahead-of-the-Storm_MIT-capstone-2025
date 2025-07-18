@@ -17,30 +17,79 @@ def ensure_subdir(base_dir, subfolder):
     os.makedirs(subdir, exist_ok=True)
     return subdir
 
-def run_analysis(config, exposure_type, vuln_type, hurricane_df, forecast_time, output_dir, cache_dir):
+def run_analysis(config, exposure_type, vuln_type, hurricane_df, forecast_time, output_dir, cache_dir, scenario="mean"):
+    # For hurricanes, ignore scenario in folder name
+    if exposure_type == "hurricane":
+        output_subdir = ensure_subdir(output_dir, f"hurricane_{vuln_type}")
+    else:
+        output_subdir = ensure_subdir(output_dir, f"{exposure_type}_{vuln_type}_{scenario}")
+
     # Create exposure, vulnerability, and impact objects
-    exposure = get_exposure_layer(exposure_type, hurricane_df, forecast_time, config, cache_dir)
+    exposure = get_exposure_layer(exposure_type, hurricane_df, forecast_time, config, cache_dir, scenario=scenario)
     vulnerability = get_vulnerability_layer(vuln_type, config, cache_dir)
     impact = get_impact_layer(exposure, vulnerability, config)
 
-    # Output subdir naming
-    output_subdir = ensure_subdir(output_dir, f"{exposure_type}_{vuln_type}")
-
     # Run and plot all layers
-    print(f"\n[Exposure Layer: {exposure_type}]")
+    print(f"\n[Exposure Layer: {exposure_type} ({scenario})]")
     exposure.plot(output_dir=output_subdir)
     print(f"\n[Vulnerability Layer: {vuln_type}]")
     vulnerability.plot(output_dir=output_subdir)
-    print(f"\n[Impact Layer: {exposure_type} x {vuln_type}]")
+    print(f"\n[Impact Layer: {exposure_type} x {vuln_type} ({scenario})]")
     impact.plot(output_dir=output_subdir)
-    print(f"\n[Binary Probability: {exposure_type} x {vuln_type}]")
+    print(f"\n[Binary Probability: {exposure_type} x {vuln_type} ({scenario})]")
     impact.plot_binary_probability(output_dir=output_subdir)
-    print(f"\n[Best/Worst Case Overlay Plots: {exposure_type} x {vuln_type}]")
-    impact.plot_best_worst_case_overlay(output_dir=output_subdir)
+    # Only hurricanes have best/worst overlays
+    if exposure_type == "hurricane":
+        print(f"\n[Best/Worst Case Overlay Plots: {exposure_type} x {vuln_type}]")
+        impact.plot_best_worst_case_overlay(output_dir=output_subdir)
     print(f"\nExpected impact: {impact.expected_impact():.2f}")
     print(f"Best case (min): {impact.best_case():.2f}")
     print(f"Worst case (max): {impact.worst_case():.2f}")
     impact.save_impact_summary(output_dir=output_subdir)
+
+def run_landslide_analysis(config, vuln_type, hurricane_df, forecast_time, output_dir, cache_dir, scenarios):
+    # Output subdir naming
+    output_subdir = ensure_subdir(output_dir, f"landslide_{vuln_type}")
+    metrics = {}
+    exposure_layers = {}
+    impact_layers = {}
+
+    # 1. Compute and plot all 3 exposure scenarios
+    for scenario in scenarios:
+        exposure = get_exposure_layer("landslide", hurricane_df, forecast_time, config, cache_dir, scenario=scenario)
+        exposure_layers[scenario] = exposure
+        print(f"\n[Exposure Layer: landslide ({scenario})]")
+        exposure.plot(output_dir=output_subdir)
+
+    # 2. Compute and plot vulnerability once
+    vulnerability = get_vulnerability_layer(vuln_type, config, cache_dir)
+    print(f"\n[Vulnerability Layer: {vuln_type}]")
+    vulnerability.plot(output_dir=output_subdir)
+
+    # 3. Compute and plot all 3 impact scenarios
+    for scenario in scenarios:
+        exposure = exposure_layers[scenario]
+        impact = get_impact_layer(exposure, vulnerability, config)
+        impact_layers[scenario] = impact
+        print(f"\n[Impact Layer: landslide x {vuln_type} ({scenario})]")
+        impact.plot(output_dir=output_subdir)
+        impact.plot_binary_probability(output_dir=output_subdir)
+        # Collect metrics
+        metrics[scenario] = impact.expected_impact()
+
+    # 4. Write a single summary txt with avg, best, worst metrics
+    summary = (
+        f"Impact summary for landslide_{vuln_type}\n"
+        f"Vulnerability type: {vuln_type}\n"
+        f"Scenarios: {', '.join(scenarios)}\n"
+        f"Expected impact (avg): {metrics['mean']:.2f}\n"
+        f"Best case (min): {metrics['min']:.2f}\n"
+        f"Worst case (max): {metrics['max']:.2f}\n"
+    )
+    out_path = os.path.join(output_subdir, f"impact_summary_landslide_{vuln_type}.txt")
+    with open(out_path, "w") as f:
+        f.write(summary)
+    print(f"Saved impact summary: {out_path}")
 
 def main():
     # Load configuration
@@ -94,17 +143,30 @@ def main():
         sys.exit(1)
     for run in runs:
         exposure_type = run["exposure"]
+        scenarios = run.get("scenarios", ["mean"])
         for vuln_type in run["vulnerabilities"]:
-            print(f"\n=== Running analysis: Exposure={exposure_type}, Vulnerability={vuln_type} ===")
-            run_analysis(
-                config,
-                exposure_type,
-                vuln_type,
-                hurricane_df,
-                chosen_forecast,
-                output_dir,
-                cache_dir,
-            )
+            if exposure_type == "landslide":
+                print(f"\n=== Running landslide analysis: Vulnerability={vuln_type} ===")
+                run_landslide_analysis(
+                    config,
+                    vuln_type,
+                    hurricane_df,
+                    chosen_forecast,
+                    output_dir,
+                    cache_dir,
+                    scenarios,
+                )
+            else:
+                print(f"\n=== Running analysis: Exposure={exposure_type}, Vulnerability={vuln_type} ===")
+                run_analysis(
+                    config,
+                    exposure_type,
+                    vuln_type,
+                    hurricane_df,
+                    chosen_forecast,
+                    output_dir,
+                    cache_dir,
+                )
     print(f"\nImpact analysis complete! Results saved to: {output_dir}")
 
 if __name__ == "__main__":

@@ -1,0 +1,6 @@
+Impact summary for landslide_population
+Vulnerability type: population
+Scenarios: mean, min, max
+Expected impact (avg): 88242.15
+Best case (min): 51005.54
+Worst case (max): 167854.40
