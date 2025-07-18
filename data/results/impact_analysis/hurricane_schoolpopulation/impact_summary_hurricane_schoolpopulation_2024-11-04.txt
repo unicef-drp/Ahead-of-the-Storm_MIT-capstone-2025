@@ -1,8 +1,0 @@
-Impact summary for hurricane_schoolpopulation_2024-11-04
-Forecast time: 2024-11-04
-Vulnerability type: schoolpopulation
-
-Results:
-Expected affected: 33932.44
-Best case (min): 2045.00 (ensemble member 31.0)
-Worst case (max): 223409.00 (ensemble member 27.0)

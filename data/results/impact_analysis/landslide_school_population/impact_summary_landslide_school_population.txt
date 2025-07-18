@@ -1,0 +1,6 @@
+Impact summary for landslide_school_population
+Vulnerability type: school_population
+Scenarios: mean, min, max
+Expected impact (avg): 7412.15
+Best case (min): 4601.75
+Worst case (max): 13567.61

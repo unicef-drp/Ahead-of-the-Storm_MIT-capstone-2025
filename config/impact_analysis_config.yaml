@@ -39,4 +39,6 @@ impact_analysis:
   runs:
     - exposure: hurricane
       vulnerabilities: [schools, school_population, health_facilities, health_facilities_population, shelters, shelters_population, population, poverty, poverty_children, severe_poverty, severe_poverty_children]
-    # Add more exposure/vulnerability combos as needed
+    - exposure: landslide
+      scenarios: [mean, min, max]
+      vulnerabilities: [schools, school_population, health_facilities, health_facilities_population, shelters, shelters_population, population, poverty, poverty_children, severe_poverty, severe_poverty_children]

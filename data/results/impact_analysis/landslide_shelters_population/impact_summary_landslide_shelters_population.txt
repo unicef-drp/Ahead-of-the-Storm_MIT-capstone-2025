@@ -1,0 +1,6 @@
+Impact summary for landslide_shelters_population
+Vulnerability type: shelters_population
+Scenarios: mean, min, max
+Expected impact (avg): 5602.90
+Best case (min): 3244.56
+Worst case (max): 11661.11

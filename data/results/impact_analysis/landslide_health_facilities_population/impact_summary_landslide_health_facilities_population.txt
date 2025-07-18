@@ -1,0 +1,6 @@
+Impact summary for landslide_health_facilities_population
+Vulnerability type: health_facilities_population
+Scenarios: mean, min, max
+Expected impact (avg): 87277.48
+Best case (min): 55339.64
+Worst case (max): 157037.44
