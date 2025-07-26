@@ -139,3 +139,5 @@ env/
 # Allow tracking of impact analysis results
 !data/results/impact_analysis/
 !data/results/impact_analysis/** 
+
+data/results/impact_analysis/.DS_Store
