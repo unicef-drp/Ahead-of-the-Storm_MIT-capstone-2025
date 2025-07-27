@@ -65,7 +65,11 @@ class VulnerabilityLayer(abc.ABC):
 
         if os.path.exists(cache_path):
             print(f"Loading cached vulnerability layer: {cache_path}")
-            grid_gdf = gpd.read_file(cache_path)
+            # Use parquet for high-res computation, gpkg for visualization
+            if cache_path.endswith('.parquet'):
+                grid_gdf = gpd.read_parquet(cache_path)
+            else:
+                grid_gdf = gpd.read_file(cache_path)
             # Fill NaNs in value column with 0
             grid_gdf[value_column] = grid_gdf[value_column].fillna(0)
             return grid_gdf
@@ -73,7 +77,11 @@ class VulnerabilityLayer(abc.ABC):
         grid_gdf = compute_func()
         # Fill NaNs in value column with 0
         grid_gdf[value_column] = grid_gdf[value_column].fillna(0)
-        grid_gdf.to_file(cache_path, driver="GPKG")
+        # Save using appropriate format
+        if cache_path.endswith('.parquet'):
+            grid_gdf.to_parquet(cache_path)
+        else:
+            grid_gdf.to_file(cache_path, driver="GPKG")
         print(f"Saved vulnerability layer to cache: {cache_path}")
         return grid_gdf
 

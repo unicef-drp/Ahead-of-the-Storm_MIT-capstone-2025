@@ -114,9 +114,17 @@ class PovertyVulnerabilityLayer(VulnerabilityLayer):
 
     def _cache_path(self):
         age_str = "_".join(map(str, self.age_groups))
-        return os.path.join(
-            self.cache_dir, f"poverty_vulnerability_{self.gender}_ages_{age_str}.gpkg"
-        )
+        resolution = self.get_resolution()
+        if self.resolution_context:
+            # Use parquet for high-res computation, gpkg for visualization
+            if self.resolution_context == "landslide_computation":
+                return os.path.join(self.cache_dir, f"poverty_vulnerability_{self.gender}_ages_{age_str}_{self.resolution_context}_{resolution}deg.parquet")
+            else:
+                return os.path.join(self.cache_dir, f"poverty_vulnerability_{self.gender}_ages_{age_str}_{self.resolution_context}_{resolution}deg.gpkg")
+        else:
+            return os.path.join(
+                self.cache_dir, f"poverty_vulnerability_{self.gender}_ages_{age_str}.gpkg"
+            )
 
     def compute_grid(self):
         if self.grid_gdf is not None:
@@ -209,10 +217,18 @@ class SeverePovertyVulnerabilityLayer(VulnerabilityLayer):
 
     def _cache_path(self):
         age_str = "_".join(map(str, self.age_groups))
-        return os.path.join(
-            self.cache_dir,
-            f"severepoverty_vulnerability_{self.gender}_ages_{age_str}.gpkg",
-        )
+        resolution = self.get_resolution()
+        if self.resolution_context:
+            # Use parquet for high-res computation, gpkg for visualization
+            if self.resolution_context == "landslide_computation":
+                return os.path.join(self.cache_dir, f"severepoverty_vulnerability_{self.gender}_ages_{age_str}_{self.resolution_context}_{resolution}deg.parquet")
+            else:
+                return os.path.join(self.cache_dir, f"severepoverty_vulnerability_{self.gender}_ages_{age_str}_{self.resolution_context}_{resolution}deg.gpkg")
+        else:
+            return os.path.join(
+                self.cache_dir,
+                f"severepoverty_vulnerability_{self.gender}_ages_{age_str}.gpkg",
+            )
 
     def compute_grid(self):
         if self.grid_gdf is not None:

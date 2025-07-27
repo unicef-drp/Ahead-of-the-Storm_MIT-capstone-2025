@@ -54,7 +54,6 @@ class LandslideImpactLayer(HurricaneImpactLayer):
         # Use visualization grid for plotting
         exposure_grid = self.exposure_layer.get_visualization_grid()
         
-        # Create a temporary vulnerability layer with visualization resolution
         from src.impact_analysis.helper.factories import get_vulnerability_layer
         
         vuln_name = self._get_vulnerability_name()
@@ -137,7 +136,6 @@ class LandslideImpactLayer(HurricaneImpactLayer):
         # Use visualization grid for plotting
         exposure_grid = self.exposure_layer.get_visualization_grid()
         
-        # Create a temporary vulnerability layer with visualization resolution
         from src.impact_analysis.helper.factories import get_vulnerability_layer
         
         vuln_name = self._get_vulnerability_name()

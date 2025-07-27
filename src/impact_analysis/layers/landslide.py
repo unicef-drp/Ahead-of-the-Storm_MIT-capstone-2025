@@ -55,7 +55,11 @@ class LandslideExposureLayer(ExposureLayer):
         
         if self.resolution_context:
             resolution = self.get_resolution()
-            return os.path.join(self.cache_dir, f"landslide_exposure_{date_str}_{self.resampling_method}_{self.resolution_context}_{resolution}deg.gpkg")
+            # Use parquet for high-res computation, gpkg for visualization
+            if self.resolution_context == "landslide_computation":
+                return os.path.join(self.cache_dir, f"landslide_exposure_{date_str}_{self.resampling_method}_{self.resolution_context}_{resolution}deg.parquet")
+            else:
+                return os.path.join(self.cache_dir, f"landslide_exposure_{date_str}_{self.resampling_method}_{self.resolution_context}_{resolution}deg.gpkg")
         else:
             return os.path.join(self.cache_dir, f"landslide_exposure_{date_str}_{self.resampling_method}.gpkg")
 
@@ -65,41 +69,81 @@ class LandslideExposureLayer(ExposureLayer):
             return self.grid_gdf
             
         cache_path = self._cache_path()
+        
+        def compute_func():
+            # Use raster-based computation for high-res
+            if self.resolution_context == "landslide_computation":
+                from src.impact_analysis.layers.raster_grid import compute_exposure_raster, get_nicaragua_bounds
+                
+                bounds = get_nicaragua_bounds()
+                grid_res = self.get_resolution()
+                grid_gdf = compute_exposure_raster(
+                    self.landslide_file, 
+                    bounds, 
+                    grid_res, 
+                    self.resampling_method
+                )
+            else:
+                # Use vector grid for visualization
+                grid_res = self.get_resolution()
+                nicaragua_gdf = get_nicaragua_boundary()
+                minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
+                
+                # Create grid cells using the same pattern as hurricane layer
+                grid_cells = []
+                x_coords = np.arange(minx, maxx, grid_res)
+                y_coords = np.arange(miny, maxy, grid_res)
+                
+                for x in x_coords:
+                    for y in y_coords:
+                        grid_cells.append(box(x, y, x + grid_res, y + grid_res))
+                
+                grid_gdf = gpd.GeoDataFrame(grid_cells, columns=["geometry"], crs="EPSG:4326")
+                
+                # Sample landslide raster values for each grid cell
+                probabilities = self._sample_raster_to_grid(grid_gdf)
+                grid_gdf["probability"] = probabilities
+                
+                # Keep ALL grid cells like hurricane layer - assign 0 to cells with no valid data
+                grid_gdf["probability"] = grid_gdf["probability"].fillna(0.0)
+                grid_gdf.loc[grid_gdf["probability"] < 0, "probability"] = 0.0
+            
+            return grid_gdf
+        
+        # Use the shared cache loading/saving logic
+        self.grid_gdf = self._load_or_compute_grid(cache_path, "probability", compute_func)
+        self._prob_grid = self.grid_gdf["probability"].values
+        return self.grid_gdf
+
+    def _load_or_compute_grid(self, cache_path, value_column, compute_func):
+        """
+        Shared logic for loading from cache, computing, filling NaNs, and saving.
+        - cache_path: path to the cache file
+        - value_column: name of the column to check/fill NaNs
+        - compute_func: function to call to compute the grid if not cached
+        """
+        import os
+        import geopandas as gpd
+
         if os.path.exists(cache_path):
             print(f"Loading cached landslide exposure layer ({self.resampling_method}): {cache_path}")
-            self.grid_gdf = gpd.read_file(cache_path)
-            self._prob_grid = self.grid_gdf["probability"].values
-            return self.grid_gdf
-
-        # Create the same grid structure as hurricane layer - FULL EXTENT
-        grid_res = self.get_resolution()
-        nicaragua_gdf = get_nicaragua_boundary()
-        minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
-        
-        # Create grid cells using the same pattern as hurricane layer
-        grid_cells = []
-        x_coords = np.arange(minx, maxx, grid_res)
-        y_coords = np.arange(miny, maxy, grid_res)
-        
-        for x in x_coords:
-            for y in y_coords:
-                grid_cells.append(box(x, y, x + grid_res, y + grid_res))
-        
-        grid_gdf = gpd.GeoDataFrame(grid_cells, columns=["geometry"], crs="EPSG:4326")
-        
-        # Sample landslide raster values for each grid cell
-        probabilities = self._sample_raster_to_grid(grid_gdf)
-        grid_gdf["probability"] = probabilities
-        
-        # Keep ALL grid cells like hurricane layer - assign 0 to cells with no valid data
-        grid_gdf["probability"] = grid_gdf["probability"].fillna(0.0)
-        grid_gdf.loc[grid_gdf["probability"] < 0, "probability"] = 0.0
-        
-        self.grid_gdf = grid_gdf
-        self._prob_grid = grid_gdf["probability"].values
-        
-        # Save to cache
-        grid_gdf.to_file(cache_path, driver="GPKG")
+            # Use parquet for high-res computation, gpkg for visualization
+            if cache_path.endswith('.parquet'):
+                grid_gdf = gpd.read_parquet(cache_path)
+            else:
+                grid_gdf = gpd.read_file(cache_path)
+            # Fill NaNs in value column with 0
+            grid_gdf[value_column] = grid_gdf[value_column].fillna(0)
+            return grid_gdf
+        # Compute grid using provided function
+        grid_gdf = compute_func()
+        # Fill NaNs in value column with 0
+        grid_gdf[value_column] = grid_gdf[value_column].fillna(0)
+        # Save using appropriate format
+        if cache_path.endswith('.parquet'):
+            grid_gdf.to_parquet(cache_path)
+        else:
+            grid_gdf.to_file(cache_path, driver="GPKG")
         print(f"Saved landslide exposure layer ({self.resampling_method}) to cache: {cache_path}")
         return grid_gdf
 
@@ -252,7 +296,6 @@ class LandslideExposureLayer(ExposureLayer):
     def get_computation_grid(self):
         """Get high-resolution grid for computation."""
         if self.resolution_context != "landslide_computation":
-            # Create temporary high-res layer for computation
             temp_layer = LandslideExposureLayer(
                 self.landslide_file, 
                 self.config, 
@@ -267,7 +310,6 @@ class LandslideExposureLayer(ExposureLayer):
     def get_visualization_grid(self):
         """Get standard resolution grid for visualization."""
         if self.resolution_context != "landslide_visualization":
-            # Create temporary standard-res layer for visualization
             temp_layer = LandslideExposureLayer(
                 self.landslide_file, 
                 self.config, 

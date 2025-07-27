@@ -24,7 +24,15 @@ class ShelterVulnerabilityLayer(VulnerabilityLayer):
 
     def _cache_path(self):
         suffix = "capacity" if self.weighted_by_capacity else "count"
-        return os.path.join(self.cache_dir, f"shelter_vulnerability_{suffix}.gpkg")
+        resolution = self.get_resolution()
+        if self.resolution_context:
+            # Use parquet for high-res computation, gpkg for visualization
+            if self.resolution_context == "landslide_computation":
+                return os.path.join(self.cache_dir, f"shelter_vulnerability_{suffix}_{self.resolution_context}_{resolution}deg.parquet")
+            else:
+                return os.path.join(self.cache_dir, f"shelter_vulnerability_{suffix}_{self.resolution_context}_{resolution}deg.gpkg")
+        else:
+            return os.path.join(self.cache_dir, f"shelter_vulnerability_{suffix}.gpkg")
 
     def compute_grid(self):
         if self.grid_gdf is not None:

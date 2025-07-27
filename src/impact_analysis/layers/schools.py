@@ -24,7 +24,11 @@ class SchoolVulnerabilityLayer(VulnerabilityLayer):
     def _cache_path(self):
         resolution = self.get_resolution()
         if self.resolution_context:
-            return os.path.join(self.cache_dir, f"school_vulnerability_{self.resolution_context}_{resolution}deg.gpkg")
+            # Use parquet for high-res computation, gpkg for visualization
+            if self.resolution_context == "landslide_computation":
+                return os.path.join(self.cache_dir, f"school_vulnerability_{self.resolution_context}_{resolution}deg.parquet")
+            else:
+                return os.path.join(self.cache_dir, f"school_vulnerability_{self.resolution_context}_{resolution}deg.gpkg")
         else:
             return os.path.join(self.cache_dir, "school_vulnerability.gpkg")
 
@@ -36,35 +40,51 @@ class SchoolVulnerabilityLayer(VulnerabilityLayer):
         def compute_func():
             grid_res = self.get_resolution()
             nicaragua_gdf = get_nicaragua_boundary()
-            minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
-            grid_cells = []
-            x_coords = np.arange(minx, maxx, grid_res)
-            y_coords = np.arange(miny, maxy, grid_res)
-            for x in x_coords:
-                for y in y_coords:
-                    grid_cells.append(box(x, y, x + grid_res, y + grid_res))
-            grid_gdf = gpd.GeoDataFrame(
-                grid_cells, columns=["geometry"], crs="EPSG:4326"
-            )
-            school_data_path = get_config_value(
-                self.config,
-                "impact_analysis.input.school_data",
-                "data/raw/osm/schools.geojson",
-            )
-            schools_file = get_data_path(school_data_path)
-            if schools_file.exists():
-                schools_gdf = gpd.read_file(schools_file)
-                school_counts = []
-                for cell in grid_gdf.geometry:
-                    count = schools_gdf.within(cell).sum()
-                    school_counts.append(count)
-                grid_gdf["school_count"] = school_counts
-                print(
-                    "Unique school_count values:", np.unique(grid_gdf["school_count"])
+            bounds = nicaragua_gdf.total_bounds
+            
+            # Use raster-based computation for high-res
+            if self.resolution_context == "landslide_computation":
+                from src.impact_analysis.layers.raster_grid import compute_vulnerability_raster
+                
+                school_data_path = get_config_value(
+                    self.config,
+                    "impact_analysis.input.school_data",
+                    "data/raw/osm/schools.geojson",
                 )
-                print("school_count dtype:", grid_gdf["school_count"].dtype)
+                schools_file = get_data_path(school_data_path)
+                if schools_file.exists():
+                    schools_gdf = gpd.read_file(schools_file)
+                    grid_gdf = compute_vulnerability_raster(schools_gdf, bounds, grid_res)
+                    print(
+                        "Unique school_count values:", np.unique(grid_gdf["school_count"])
+                    )
+                    print("school_count dtype:", grid_gdf["school_count"].dtype)
+                else:
+                    # Fallback to vector grid if no schools data
+                    grid_gdf = self._create_vector_grid(bounds, grid_res)
+                    grid_gdf["school_count"] = 0
             else:
-                grid_gdf["school_count"] = 0
+                # Use vector grid for visualization
+                grid_gdf = self._create_vector_grid(bounds, grid_res)
+                school_data_path = get_config_value(
+                    self.config,
+                    "impact_analysis.input.school_data",
+                    "data/raw/osm/schools.geojson",
+                )
+                schools_file = get_data_path(school_data_path)
+                if schools_file.exists():
+                    schools_gdf = gpd.read_file(schools_file)
+                    school_counts = []
+                    for cell in grid_gdf.geometry:
+                        count = schools_gdf.within(cell).sum()
+                        school_counts.append(count)
+                    grid_gdf["school_count"] = school_counts
+                    print(
+                        "Unique school_count values:", np.unique(grid_gdf["school_count"])
+                    )
+                    print("school_count dtype:", grid_gdf["school_count"].dtype)
+                else:
+                    grid_gdf["school_count"] = 0
             return grid_gdf
 
         self.grid_gdf = self._load_or_compute_grid(
@@ -72,6 +92,19 @@ class SchoolVulnerabilityLayer(VulnerabilityLayer):
         )
         self._school_grid = self.grid_gdf["school_count"].values
         return self.grid_gdf
+
+    def _create_vector_grid(self, bounds, grid_res):
+        """Create vector grid for visualization."""
+        minx, miny, maxx, maxy = bounds
+        grid_cells = []
+        x_coords = np.arange(minx, maxx, grid_res)
+        y_coords = np.arange(miny, maxy, grid_res)
+        for x in x_coords:
+            for y in y_coords:
+                grid_cells.append(box(x, y, x + grid_res, y + grid_res))
+        return gpd.GeoDataFrame(
+            grid_cells, columns=["geometry"], crs="EPSG:4326"
+        )
 
     def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
         grid_gdf = self.compute_grid()
@@ -108,7 +141,11 @@ class SchoolPopulationVulnerabilityLayer(VulnerabilityLayer):
     def _cache_path(self):
         resolution = self.get_resolution()
         if self.resolution_context:
-            return os.path.join(self.cache_dir, f"school_population_vulnerability_{self.resolution_context}_{resolution}deg.gpkg")
+            # Use parquet for high-res computation, gpkg for visualization
+            if self.resolution_context == "landslide_computation":
+                return os.path.join(self.cache_dir, f"school_population_vulnerability_{self.resolution_context}_{resolution}deg.parquet")
+            else:
+                return os.path.join(self.cache_dir, f"school_population_vulnerability_{self.resolution_context}_{resolution}deg.gpkg")
         else:
             return os.path.join(self.cache_dir, "school_population_vulnerability.gpkg")
 
