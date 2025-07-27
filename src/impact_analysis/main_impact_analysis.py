@@ -136,37 +136,33 @@ def main():
     chosen_forecast = available_forecasts[0]
     print(f"Using forecast time: {chosen_forecast}")
 
-    # Run all combos from config
+    # Run only landslide analysis (skip hurricanes for now)
     runs = config.get("impact_analysis", {}).get("runs", [])
     if not runs:
         print("No runs specified in config under impact_analysis.runs")
         sys.exit(1)
-    for run in runs:
+    
+    # Filter to only landslide runs
+    landslide_runs = [run for run in runs if run["exposure"] == "landslide"]
+    if not landslide_runs:
+        print("No landslide runs found in config")
+        sys.exit(1)
+    
+    print("Running LANDSLIDE ANALYSIS ONLY (skipping hurricanes)")
+    for run in landslide_runs:
         exposure_type = run["exposure"]
         scenarios = run.get("scenarios", ["mean"])
         for vuln_type in run["vulnerabilities"]:
-            if exposure_type == "landslide":
-                print(f"\n=== Running landslide analysis: Vulnerability={vuln_type} ===")
-                run_landslide_analysis(
-                    config,
-                    vuln_type,
-                    hurricane_df,
-                    chosen_forecast,
-                    output_dir,
-                    cache_dir,
-                    scenarios,
-                )
-            else:
-                print(f"\n=== Running analysis: Exposure={exposure_type}, Vulnerability={vuln_type} ===")
-                run_analysis(
-                    config,
-                    exposure_type,
-                    vuln_type,
-                    hurricane_df,
-                    chosen_forecast,
-                    output_dir,
-                    cache_dir,
-                )
+            print(f"\n=== Running landslide analysis: Vulnerability={vuln_type} ===")
+            run_landslide_analysis(
+                config,
+                vuln_type,
+                hurricane_df,
+                chosen_forecast,
+                output_dir,
+                cache_dir,
+                scenarios,
+            )
     print(f"\nImpact analysis complete! Results saved to: {output_dir}")
 
 if __name__ == "__main__":

@@ -145,6 +145,99 @@ class LandslideDownloader:
             self.logger.error(f"Error during landslide data download: {e}")
             return None
 
+    def download_landslide_data_for_date(self, target_date: str, forecast_window: int = 48) -> Optional[list]:
+        """
+        Download landslide hazard GeoTIFF for a specific date and forecast window.
+        If the exact forecast window is not available, downloads the longest available forecast.
+        
+        Args:
+            target_date: Date in format 'YYYYMMDDTHHMM' (e.g., '20250725T0000')
+            forecast_window: Forecast window in hours (default: 48)
+            
+        Returns:
+            List of downloaded file paths or None if failed
+        """
+        try:
+            source_url = get_config_value(self.config, "source_url")
+            files = self._list_available_files()
+            
+            # Find files matching the target date
+            matching_files = []
+            for fname in files:
+                match = re.match(r"(\d{8}T\d{4})\+(\d{8}T\d{4})", fname)
+                if match:
+                    start, end = match.groups()
+                    if start == target_date:
+                        window_hours = self._parse_forecast_window(fname)
+                        matching_files.append((fname, window_hours))
+            
+            if not matching_files:
+                self.logger.error(f"No forecast files found for date {target_date}")
+                return None
+            
+            # Sort by forecast window (longest first)
+            matching_files.sort(key=lambda x: x[1], reverse=True)
+            
+            # Find exact match first, then longest available
+            selected_file = None
+            selected_window = None
+            
+            for fname, window_hours in matching_files:
+                if window_hours == forecast_window:
+                    selected_file = fname
+                    selected_window = window_hours
+                    self.logger.info(f"Found exact match: {fname} ({window_hours}h)")
+                    break
+            
+            if not selected_file:
+                # Use the longest available forecast
+                selected_file, selected_window = matching_files[0]
+                self.logger.warning(f"Exact {forecast_window}h forecast not available for {target_date}")
+                self.logger.info(f"Using longest available forecast: {selected_file} ({selected_window}h)")
+            
+            # Parse start time for filename
+            match = re.match(r"(\d{8}T\d{4})\+(\d{8}T\d{4})", selected_file)
+            if match:
+                start, _ = match.groups()
+                raw_name = f"landslide_forecast_{selected_window}h_{start}.tif"
+            else:
+                raw_name = f"landslide_forecast_{selected_window}h_unknown.tif"
+            
+            raw_file = self.raw_dir / raw_name
+            
+            # Download if file doesn't exist
+            if not raw_file.exists():
+                file_url = source_url + selected_file
+                if self._download_file(file_url, raw_file):
+                    self.logger.info(f"Downloaded file for {target_date}: {raw_file}")
+                else:
+                    self.logger.error(f"Failed to download file for {target_date}: {file_url}")
+                    return None
+            else:
+                self.logger.info(f"Found existing raw file for {target_date}: {raw_file}, skipping download.")
+            
+            # Clip to Nicaragua
+            match = re.match(r"landslide_forecast_\d+h_(\d{8}T\d{4})\.tif", raw_file.name)
+            if match:
+                start = match.group(1)
+                processed_name = f"landslide_forecast_{selected_window}h_{start}_nicaragua.tif"
+            else:
+                processed_name = f"landslide_forecast_{selected_window}h_unknown_nicaragua.tif"
+            
+            clipped_path = self._clip_to_nicaragua(str(raw_file), processed_name)
+            
+            if clipped_path:
+                self.logger.info(f"Successfully downloaded and processed file for {target_date}: {clipped_path}")
+                self.logger.info(f"Forecast window: {selected_window}h (requested: {forecast_window}h)")
+                return [clipped_path]
+            else:
+                self.logger.error(f"Failed to process file for {target_date}")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"Error during landslide data download for {target_date}: {e}")
+            return None
+
     def get_download_summary(self) -> Dict[str, Any]:
         raw_files = list(self.raw_dir.glob("*.tif"))
         processed_files = list(self.processed_dir.glob("*.tif"))

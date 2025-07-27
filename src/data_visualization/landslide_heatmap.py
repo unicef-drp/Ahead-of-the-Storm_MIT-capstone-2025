@@ -172,51 +172,58 @@ def plot_landslide_heatmap(
 
 
 def main():
-    """Main function to create landslide heatmap for the latest 48h forecast."""
+    """Main function to create landslide heatmap for the latest available forecast."""
     logger = setup_logging(__name__)
     logger.info("=" * 60)
-    logger.info("LANDSLIDE HAZARD HEATMAP VISUALIZATION (48h Forecast)")
+    logger.info("LANDSLIDE HAZARD HEATMAP VISUALIZATION (Latest Forecast)")
     logger.info("=" * 60)
     try:
-        # Find the most recent 48h landslide GeoTIFF with new naming convention
+        # Find the most recent landslide GeoTIFF with new naming convention
         landslide_dir = get_data_path("data/preprocessed/landslide")
-        tiff_files = list(landslide_dir.glob("landslide_forecast_48h_*_nicaragua.tif"))
+        tiff_files = list(landslide_dir.glob("landslide_forecast_*h_*_nicaragua.tif"))
         if not tiff_files:
-            logger.error("No 48h landslide GeoTIFF files found!")
+            logger.error("No landslide GeoTIFF files found!")
             return
         # Use the most recent file
         latest_tiff = max(tiff_files, key=lambda x: x.stat().st_mtime)
         logger.info(f"Using landslide data: {latest_tiff}")
-        # Extract forecast start time for output filename
-        match = re.match(r"landslide_forecast_48h_(\d{8}T\d{4})_nicaragua.tif", latest_tiff.name)
+        
+        # Extract forecast window and start time for output filename
+        match = re.match(r"landslide_forecast_(\d+h)_(\d{8}T\d{4})_nicaragua.tif", latest_tiff.name)
         if match:
-            start = match.group(1)
-            plot_filename = f"landslide_heatmap_48h_{start}_nicaragua.png"
+            window, start = match.groups()
+            plot_filename = f"landslide_heatmap_{window}_{start}_nicaragua.png"
+            title = f"NASA LHASA-F Landslide Probability ({window} Forecast)\nNicaragua"
         else:
-            plot_filename = "landslide_heatmap_48h_unknown_nicaragua.png"
+            plot_filename = "landslide_heatmap_unknown_nicaragua.png"
+            title = "NASA LHASA-F Landslide Probability\nNicaragua"
+        
         # Create heatmap
         plot_path = plot_landslide_heatmap(
             tiff_path=str(latest_tiff),
             output_dir="data/results/landslide",
-            title="NASA LHASA-F Landslide Probability (48h Forecast)\nNicaragua",
+            title=title,
             cmap="YlOrRd",
             log_scale=False
         )
+        
         # Rename/move plot to match new convention if needed
         if plot_path and Path(plot_path).name != plot_filename:
             new_plot_path = Path(plot_path).parent / plot_filename
             os.rename(plot_path, new_plot_path)
             logger.info(f"Renamed plot to: {new_plot_path}")
+            plot_path = str(new_plot_path)
+        
         if plot_path:
             logger.info("=" * 60)
-            logger.info("✅ 48h LANDSLIDE HEATMAP CREATED SUCCESSFULLY!")
+            logger.info("✅ LANDSLIDE HEATMAP CREATED SUCCESSFULLY!")
             logger.info("=" * 60)
             logger.info(f"Plot saved to: {plot_path}")
             logger.info("Data source: NASA LHASA-F (probability)")
             logger.info("Coverage: Nicaragua")
             logger.info("Use: Probability grid for impact analysis")
         else:
-            logger.error("❌ Failed to create 48h landslide heatmap")
+            logger.error("❌ Failed to create landslide heatmap")
     except Exception as e:
         logger.error(f"Error in main function: {e}")
 
