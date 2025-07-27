@@ -14,6 +14,9 @@ impact_analysis:
     
     # Nicaragua boundary data
     nicaragua_boundary: "data/raw/osm/nicaragua_boundary.geojson"
+    # Flood raster for exposure analysis
+    flood_data:
+      enhanced_flood_file: "data/preprocessed/flood/nicaragua_flood_extent_20201117.tif"
   wind_region:
     smoothing_method: "bspline"  # Options: bspline, roundcorner, superspline, none
     smoothing_params:
@@ -37,8 +40,10 @@ impact_analysis:
 
   # Analysis runs: specify which exposures and vulnerabilities to analyze
   runs:
-    - exposure: hurricane
-      vulnerabilities: [schools, school_population, health_facilities, health_facilities_population, shelters, shelters_population, population, poverty, poverty_children, severe_poverty, severe_poverty_children]
-    - exposure: landslide
-      scenarios: [mean, min, max]
-      vulnerabilities: [schools, school_population, health_facilities, health_facilities_population, shelters, shelters_population, population, poverty, poverty_children, severe_poverty, severe_poverty_children]
+    # - exposure: hurricane
+    #   vulnerabilities: [schools, school_population, health_facilities, health_facilities_population, shelters, shelters_population, population, poverty, poverty_children, severe_poverty, severe_poverty_children]
+    # - exposure: landslide
+      # scenarios: [mean, min, max]
+      # vulnerabilities: [schools, school_population, health_facilities, health_facilities_population, shelters, shelters_population, population, poverty, poverty_children, severe_poverty, severe_poverty_children]
+    - exposure: flood
+      vulnerabilities: [schools, poverty_children]

@@ -132,6 +132,14 @@ env/
 /gadm41_NIC_shp/
 /gadm41_NIC_shp.zip 
 
+# Geospatial Data Formats (ESRI Shapefile auxiliary files)
+*.cpg
+*.dbf
+*.prj
+*.shx
+*.sbn
+*.sbx
+
 # Allow tracking of data/preprocessed/weatherlab files
 !data/preprocessed/weatherlab/
 !data/preprocessed/weatherlab/** 

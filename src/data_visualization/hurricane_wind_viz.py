@@ -32,7 +32,7 @@ def main():
     print(f"Loading: {csv_path}")
     df = pd.read_csv(csv_path)
     # 2. Filter for ensemble_member == 0.0
-    df = df[df["ensemble_member"] == 0.0].copy()
+    df = df[df["ensemble_member"] == 3.0].copy()
     # 3. Sort by valid_time if present
     if "valid_time" in df.columns:
         try:

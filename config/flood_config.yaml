@@ -1,0 +1,46 @@
+# Flood Data Download and Processing Configuration
+# GEOGloWS, CDRI, and DEM for Nicaragua Flood Modeling
+
+flood:
+  name: "nicaragua_flood"
+  year: 2024
+  # DEM and risk map sources
+  dem_file: "data/raw/flood_riskmap/srtm_90m_dem_nic.tif"
+  riskmap_dir: "data/raw/flood_riskmap"
+  riskmap_files:
+    h2: "nic_flood_CDRI_h2.tif"
+    h5: "nic_flood_CDRI_h5.tif"
+    h10: "nic_flood_CDRI_h10.tif"
+    h25: "nic_flood_CDRI_h25.tif"
+    h50: "nic_flood_CDRI_h50.tif"
+    h100: "nic_flood_CDRI_h100.tif"
+    h500: "nic_flood_CDRI_h500.tif"
+    h1000: "nic_flood_CDRI_h1000.tif"
+  discharge_file: "data/preprocessed/flood/nicaragua_discharge_20201117_felix.geojson"
+  output_directory: "data/preprocessed/flood"
+
+# Download settings for river discharge
+geoglows:
+  api_root: "https://geoglows.ecmwf.int/api/v2"
+  layer_url: "https://livefeeds3.arcgis.com/arcgis/rest/services/GEOGLOWS/GlobalWaterModel_Medium/MapServer/0/query"
+  country_where_clause: "rivercountry='Nicaragua'"
+  target_date: "20201117" #example dates: 20200315 -> sunny day, 20201117 -> hurricane
+  cache_dir: "data/preprocessed/flood/cache"
+  max_workers: 80
+  min_workers: 20
+  chunk_size: 500
+
+# Flood model parameters
+model:
+  downsample_factor: 4
+  slope_weight: 0.3
+  twi_weight: 0.4
+  depth_to_inundation_coeff: 1.5
+  flood_threshold_cm: 25
+  n_ensemble: 50
+
+# Logging configuration
+logging:
+  level: "INFO"
+  log_file: "logs/flood_download.log"
+  console_output: true 

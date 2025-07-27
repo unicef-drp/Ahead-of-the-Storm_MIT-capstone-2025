@@ -1,0 +1,10 @@
+Impact summary for hurricane_poverty_both_ages_0_5_10_15_unknown
+Forecast time: unknown
+Vulnerability type: poverty
+Age groups: [0, 5, 10, 15]
+Gender: both
+
+Results:
+Expected affected: 377.84
+Best case (min): 8625.22 (ensemble member 0)
+Worst case (max): 8625.22 (ensemble member 0)
