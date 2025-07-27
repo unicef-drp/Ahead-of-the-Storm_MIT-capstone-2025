@@ -1,6 +1,6 @@
 import numpy as np
-import geopandas as gpd
-import matplotlib.pyplot as plt
+import geopandas as gpd # type: ignore
+import matplotlib.pyplot as plt # type: ignore
 from shapely.geometry import box
 from src.impact_analysis.layers.base import VulnerabilityLayer
 from src.utils.config_utils import get_config_value
@@ -10,8 +10,8 @@ import os
 
 
 class SchoolVulnerabilityLayer(VulnerabilityLayer):
-    def __init__(self, config, cache_dir=None):
-        super().__init__(config)
+    def __init__(self, config, cache_dir=None, resolution_context=None):
+        super().__init__(config, resolution_context)
         self.grid_gdf = None
         self._school_grid = None
         self.cache_dir = cache_dir or get_config_value(
@@ -22,7 +22,11 @@ class SchoolVulnerabilityLayer(VulnerabilityLayer):
         os.makedirs(self.cache_dir, exist_ok=True)
 
     def _cache_path(self):
-        return os.path.join(self.cache_dir, "school_vulnerability.gpkg")
+        resolution = self.get_resolution()
+        if self.resolution_context:
+            return os.path.join(self.cache_dir, f"school_vulnerability_{self.resolution_context}_{resolution}deg.gpkg")
+        else:
+            return os.path.join(self.cache_dir, "school_vulnerability.gpkg")
 
     def compute_grid(self):
         if self.grid_gdf is not None:
@@ -30,9 +34,7 @@ class SchoolVulnerabilityLayer(VulnerabilityLayer):
         cache_path = self._cache_path()
 
         def compute_func():
-            grid_res = get_config_value(
-                self.config, "impact_analysis.grid.resolution_degrees", 0.1
-            )
+            grid_res = self.get_resolution()
             nicaragua_gdf = get_nicaragua_boundary()
             minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
             grid_cells = []
@@ -92,8 +94,8 @@ class SchoolVulnerabilityLayer(VulnerabilityLayer):
 
 
 class SchoolPopulationVulnerabilityLayer(VulnerabilityLayer):
-    def __init__(self, config, cache_dir=None):
-        super().__init__(config)
+    def __init__(self, config, cache_dir=None, resolution_context=None):
+        super().__init__(config, resolution_context)
         self.grid_gdf = None
         self._people_grid = None
         self.cache_dir = cache_dir or get_config_value(
@@ -104,7 +106,11 @@ class SchoolPopulationVulnerabilityLayer(VulnerabilityLayer):
         os.makedirs(self.cache_dir, exist_ok=True)
 
     def _cache_path(self):
-        return os.path.join(self.cache_dir, "school_population_vulnerability.gpkg")
+        resolution = self.get_resolution()
+        if self.resolution_context:
+            return os.path.join(self.cache_dir, f"school_population_vulnerability_{self.resolution_context}_{resolution}deg.gpkg")
+        else:
+            return os.path.join(self.cache_dir, "school_population_vulnerability.gpkg")
 
     def compute_grid(self):
         if self.grid_gdf is not None:
@@ -112,9 +118,7 @@ class SchoolPopulationVulnerabilityLayer(VulnerabilityLayer):
         cache_path = self._cache_path()
 
         def compute_func():
-            grid_res = get_config_value(
-                self.config, "impact_analysis.grid.resolution_degrees", 0.1
-            )
+            grid_res = self.get_resolution()
             nicaragua_gdf = get_nicaragua_boundary()
             minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
             grid_cells = []

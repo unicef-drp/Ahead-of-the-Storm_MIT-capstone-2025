@@ -11,8 +11,8 @@ from src.utils.hurricane_geom import get_nicaragua_boundary
 
 
 class PopulationVulnerabilityLayer(VulnerabilityLayer):
-    def __init__(self, config, age_groups=None, gender="both", cache_dir=None):
-        super().__init__(config)
+    def __init__(self, config, age_groups=None, gender="both", cache_dir=None, resolution_context=None):
+        super().__init__(config, resolution_context)
         self.age_groups = (
             age_groups if age_groups is not None else list(range(0, 85, 5))
         )
@@ -28,7 +28,11 @@ class PopulationVulnerabilityLayer(VulnerabilityLayer):
 
     def _cache_path(self):
         age_str = "_".join(map(str, self.age_groups))
-        return os.path.join(self.cache_dir, f"population_{self.gender}_{age_str}.gpkg")
+        resolution = self.get_resolution()
+        if self.resolution_context:
+            return os.path.join(self.cache_dir, f"population_{self.gender}_{age_str}_{self.resolution_context}_{resolution}deg.gpkg")
+        else:
+            return os.path.join(self.cache_dir, f"population_{self.gender}_{age_str}.gpkg")
 
     def compute_grid(self):
         if self.grid_gdf is not None:
@@ -36,9 +40,7 @@ class PopulationVulnerabilityLayer(VulnerabilityLayer):
         cache_path = self._cache_path()
 
         def compute_func():
-            grid_res = get_config_value(
-                self.config, "impact_analysis.grid.resolution_degrees", 0.1
-            )
+            grid_res = self.get_resolution()
             nicaragua_gdf = get_nicaragua_boundary()
             minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
             grid_cells = []

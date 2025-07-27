@@ -21,7 +21,7 @@ from src.utils.config_utils import get_config_value
 
 
 def get_exposure_layer(
-    exposure_type, hurricane_df, forecast_time, config, cache_dir, scenario="mean"
+    exposure_type, hurricane_df, forecast_time, config, cache_dir, scenario="mean", resolution_context=None
 ):
     if exposure_type == "hurricane":
         return HurricaneExposureLayer(hurricane_df, forecast_time, config, cache_dir)
@@ -58,50 +58,51 @@ def get_exposure_layer(
             config=config,
             cache_dir=cache_dir,
             resampling_method=scenario,
+            resolution_context=resolution_context,
         )
     raise ValueError(f"Unknown exposure type: {exposure_type}")
 
 
-def get_vulnerability_layer(vuln_type, config, cache_dir):
+def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=None):
     if vuln_type == "schools":
-        return SchoolVulnerabilityLayer(config, cache_dir=cache_dir)
+        return SchoolVulnerabilityLayer(config, cache_dir=cache_dir, resolution_context=resolution_context)
     if vuln_type == "school_population":
-        return SchoolPopulationVulnerabilityLayer(config, cache_dir=cache_dir)
+        return SchoolPopulationVulnerabilityLayer(config, cache_dir=cache_dir, resolution_context=resolution_context)
     if vuln_type == "health_facilities":
         return HealthFacilityVulnerabilityLayer(
-            config, weighted_by_population=False, cache_dir=cache_dir
+            config, weighted_by_population=False, cache_dir=cache_dir, resolution_context=resolution_context
         )
     if vuln_type == "health_facilities_population":
         return HealthFacilityVulnerabilityLayer(
-            config, weighted_by_population=True, cache_dir=cache_dir
+            config, weighted_by_population=True, cache_dir=cache_dir, resolution_context=resolution_context
         )
     if vuln_type == "shelters":
         return ShelterVulnerabilityLayer(
-            config, weighted_by_capacity=False, cache_dir=cache_dir
+            config, weighted_by_capacity=False, cache_dir=cache_dir, resolution_context=resolution_context
         )
     if vuln_type == "shelters_population":
         return ShelterVulnerabilityLayer(
-            config, weighted_by_capacity=True, cache_dir=cache_dir
+            config, weighted_by_capacity=True, cache_dir=cache_dir, resolution_context=resolution_context
         )
     if vuln_type == "population":
         return PopulationVulnerabilityLayer(
-            config, age_groups=list(range(0, 85, 5)), gender="both", cache_dir=cache_dir
+            config, age_groups=list(range(0, 85, 5)), gender="both", cache_dir=cache_dir, resolution_context=resolution_context
         )
     if vuln_type == "poverty":
         return PovertyVulnerabilityLayer(
-            config, age_groups=list(range(0, 85, 5)), gender="both", cache_dir=cache_dir
+            config, age_groups=list(range(0, 85, 5)), gender="both", cache_dir=cache_dir, resolution_context=resolution_context
         )
     if vuln_type == "poverty_children":
         return PovertyVulnerabilityLayer(
-            config, age_groups=[0, 5, 10, 15], gender="both", cache_dir=cache_dir
+            config, age_groups=[0, 5, 10, 15], gender="both", cache_dir=cache_dir, resolution_context=resolution_context
         )
     if vuln_type == "severe_poverty":
         return SeverePovertyVulnerabilityLayer(
-            config, age_groups=list(range(0, 85, 5)), gender="both", cache_dir=cache_dir
+            config, age_groups=list(range(0, 85, 5)), gender="both", cache_dir=cache_dir, resolution_context=resolution_context
         )
     if vuln_type == "severe_poverty_children":
         return SeverePovertyVulnerabilityLayer(
-            config, age_groups=[0, 5, 10, 15], gender="both", cache_dir=cache_dir
+            config, age_groups=[0, 5, 10, 15], gender="both", cache_dir=cache_dir, resolution_context=resolution_context
         )
     raise ValueError(f"Unknown vulnerability type: {vuln_type}")
 

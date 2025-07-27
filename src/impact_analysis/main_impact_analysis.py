@@ -72,7 +72,7 @@ def run_landslide_analysis(
     exposure_layers = {}
     impact_layers = {}
 
-    # 1. Compute and plot all 3 exposure scenarios
+    # 1. Compute and plot all 3 exposure scenarios (using visualization resolution)
     for scenario in scenarios:
         exposure = get_exposure_layer(
             "landslide",
@@ -81,20 +81,34 @@ def run_landslide_analysis(
             config,
             cache_dir,
             scenario=scenario,
+            resolution_context="landslide_visualization",
         )
         exposure_layers[scenario] = exposure
         print(f"\n[Exposure Layer: landslide ({scenario})]")
         exposure.plot(output_dir=output_subdir)
 
-    # 2. Compute and plot vulnerability once
-    vulnerability = get_vulnerability_layer(vuln_type, config, cache_dir)
+    # 2. Compute and plot vulnerability once (using visualization resolution)
+    vulnerability = get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context="landslide_visualization")
     print(f"\n[Vulnerability Layer: {vuln_type}]")
     vulnerability.plot(output_dir=output_subdir)
 
     # 3. Compute and plot all 3 impact scenarios
     for scenario in scenarios:
-        exposure = exposure_layers[scenario]
-        impact = get_impact_layer(exposure, vulnerability, config)
+        # Create high-res exposure layer for computation
+        high_res_exposure = get_exposure_layer(
+            "landslide",
+            hurricane_df,
+            forecast_time,
+            config,
+            cache_dir,
+            scenario=scenario,
+            resolution_context="landslide_computation",
+        )
+        # Create high-res vulnerability layer for computation
+        high_res_vulnerability = get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context="landslide_computation")
+        
+        # Create impact layer with high-res layers
+        impact = get_impact_layer(high_res_exposure, high_res_vulnerability, config)
         impact_layers[scenario] = impact
         print(f"\n[Impact Layer: landslide x {vuln_type} ({scenario})]")
         impact.plot(output_dir=output_subdir)

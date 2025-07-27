@@ -14,10 +14,11 @@ from src.utils.path_utils import get_data_path
 class LandslideExposureLayer(ExposureLayer):
     """Landslide exposure layer that reads raster data and creates probability grid."""
     
-    def __init__(self, landslide_file, config, cache_dir=None, resampling_method="mean"):
+    def __init__(self, landslide_file, config, cache_dir=None, resampling_method="mean", resolution_context=None):
         super().__init__(config)
         self.landslide_file = landslide_file
         self.resampling_method = resampling_method  # mean, min, max
+        self.resolution_context = resolution_context  # For high-res computation
         self.grid_gdf = None
         self._prob_grid = None
         self.cache_dir = cache_dir or get_config_value(
@@ -26,6 +27,21 @@ class LandslideExposureLayer(ExposureLayer):
             "data/results/impact_analysis/cache/",
         )
         os.makedirs(self.cache_dir, exist_ok=True)
+
+    def get_resolution(self):
+        """Get the appropriate resolution based on context."""
+        if self.resolution_context == "landslide_computation":
+            return get_config_value(
+                self.config, "impact_analysis.grid.landslide.computation_resolution", 0.01
+            )
+        elif self.resolution_context == "landslide_visualization":
+            return get_config_value(
+                self.config, "impact_analysis.grid.landslide.visualization_resolution", 0.1
+            )
+        else:
+            return get_config_value(
+                self.config, "impact_analysis.grid.resolution_degrees", 0.1
+            )
 
     def _cache_path(self):
         """Generate cache path for landslide exposure layer with resampling method."""
@@ -36,7 +52,12 @@ class LandslideExposureLayer(ExposureLayer):
         filename = Path(self.landslide_file).name
         match = re.search(r'(\d{8}T\d{4})', filename)
         date_str = match.group(1) if match else 'unknown'
-        return os.path.join(self.cache_dir, f"landslide_exposure_{date_str}_{self.resampling_method}.gpkg")
+        
+        if self.resolution_context:
+            resolution = self.get_resolution()
+            return os.path.join(self.cache_dir, f"landslide_exposure_{date_str}_{self.resampling_method}_{self.resolution_context}_{resolution}deg.gpkg")
+        else:
+            return os.path.join(self.cache_dir, f"landslide_exposure_{date_str}_{self.resampling_method}.gpkg")
 
     def compute_grid(self):
         """Compute the landslide exposure probability grid matching hurricane grid structure."""
@@ -51,9 +72,7 @@ class LandslideExposureLayer(ExposureLayer):
             return self.grid_gdf
 
         # Create the same grid structure as hurricane layer - FULL EXTENT
-        grid_res = get_config_value(
-            self.config, "impact_analysis.grid.resolution_degrees", 0.1
-        )
+        grid_res = self.get_resolution()
         nicaragua_gdf = get_nicaragua_boundary()
         minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
         
@@ -229,6 +248,36 @@ class LandslideExposureLayer(ExposureLayer):
                 grid_cells.append(box(x, y, x + grid_res, y + grid_res))
                 
         return gpd.GeoDataFrame(grid_cells, columns=["geometry"], crs="EPSG:4326")
+
+    def get_computation_grid(self):
+        """Get high-resolution grid for computation."""
+        if self.resolution_context != "landslide_computation":
+            # Create temporary high-res layer for computation
+            temp_layer = LandslideExposureLayer(
+                self.landslide_file, 
+                self.config, 
+                self.cache_dir, 
+                self.resampling_method, 
+                "landslide_computation"
+            )
+            return temp_layer.compute_grid()
+        else:
+            return self.compute_grid()
+
+    def get_visualization_grid(self):
+        """Get standard resolution grid for visualization."""
+        if self.resolution_context != "landslide_visualization":
+            # Create temporary standard-res layer for visualization
+            temp_layer = LandslideExposureLayer(
+                self.landslide_file, 
+                self.config, 
+                self.cache_dir, 
+                self.resampling_method, 
+                "landslide_visualization"
+            )
+            return temp_layer.compute_grid()
+        else:
+            return self.compute_grid()
 
     def get_landslide_regions(self):
         """Return regions where landslide probability > threshold for compatibility."""

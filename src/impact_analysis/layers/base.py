@@ -1,6 +1,7 @@
 import abc
 import numpy as np
 import geopandas as gpd
+from src.utils.config_utils import get_config_value
 
 
 class ExposureLayer(abc.ABC):
@@ -23,8 +24,9 @@ class ExposureLayer(abc.ABC):
 class VulnerabilityLayer(abc.ABC):
     """Abstract base class for vulnerability layers (e.g., schools, hospitals, population)."""
 
-    def __init__(self, config):
+    def __init__(self, config, resolution_context=None):
         self.config = config
+        self.resolution_context = resolution_context  # For landslide high-res computation
 
     @abc.abstractmethod
     def compute_grid(self) -> gpd.GeoDataFrame:
@@ -35,6 +37,21 @@ class VulnerabilityLayer(abc.ABC):
     def plot(self, ax=None):
         """Plot the vulnerability layer."""
         pass
+
+    def get_resolution(self):
+        """Get the appropriate resolution based on context."""
+        if self.resolution_context == "landslide_computation":
+            return get_config_value(
+                self.config, "impact_analysis.grid.landslide.computation_resolution", 0.01
+            )
+        elif self.resolution_context == "landslide_visualization":
+            return get_config_value(
+                self.config, "impact_analysis.grid.landslide.visualization_resolution", 0.1
+            )
+        else:
+            return get_config_value(
+                self.config, "impact_analysis.grid.resolution_degrees", 0.1
+            )
 
     def _load_or_compute_grid(self, cache_path, value_column, compute_func):
         """
