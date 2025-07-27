@@ -12,20 +12,35 @@ from src.impact_analysis.helper.factories import (
 from src.utils.config_utils import load_config, get_config_value
 from src.utils.path_utils import get_data_path
 
+
 def ensure_subdir(base_dir, subfolder):
     subdir = os.path.join(base_dir, subfolder)
     os.makedirs(subdir, exist_ok=True)
     return subdir
 
-def run_analysis(config, exposure_type, vuln_type, hurricane_df, forecast_time, output_dir, cache_dir, scenario="mean"):
+
+def run_analysis(
+    config,
+    exposure_type,
+    vuln_type,
+    hurricane_df,
+    forecast_time,
+    output_dir,
+    cache_dir,
+    scenario="mean",
+):
     # For hurricanes, ignore scenario in folder name
     if exposure_type == "hurricane":
         output_subdir = ensure_subdir(output_dir, f"hurricane_{vuln_type}")
     else:
-        output_subdir = ensure_subdir(output_dir, f"{exposure_type}_{vuln_type}_{scenario}")
+        output_subdir = ensure_subdir(
+            output_dir, f"{exposure_type}_{vuln_type}_{scenario}"
+        )
 
     # Create exposure, vulnerability, and impact objects
-    exposure = get_exposure_layer(exposure_type, hurricane_df, forecast_time, config, cache_dir, scenario=scenario)
+    exposure = get_exposure_layer(
+        exposure_type, hurricane_df, forecast_time, config, cache_dir, scenario=scenario
+    )
     vulnerability = get_vulnerability_layer(vuln_type, config, cache_dir)
     impact = get_impact_layer(exposure, vulnerability, config)
 
@@ -47,7 +62,10 @@ def run_analysis(config, exposure_type, vuln_type, hurricane_df, forecast_time, 
     print(f"Worst case (max): {impact.worst_case():.2f}")
     impact.save_impact_summary(output_dir=output_subdir)
 
-def run_landslide_analysis(config, vuln_type, hurricane_df, forecast_time, output_dir, cache_dir, scenarios):
+
+def run_landslide_analysis(
+    config, vuln_type, hurricane_df, forecast_time, output_dir, cache_dir, scenarios
+):
     # Output subdir naming
     output_subdir = ensure_subdir(output_dir, f"landslide_{vuln_type}")
     metrics = {}
@@ -56,7 +74,14 @@ def run_landslide_analysis(config, vuln_type, hurricane_df, forecast_time, outpu
 
     # 1. Compute and plot all 3 exposure scenarios
     for scenario in scenarios:
-        exposure = get_exposure_layer("landslide", hurricane_df, forecast_time, config, cache_dir, scenario=scenario)
+        exposure = get_exposure_layer(
+            "landslide",
+            hurricane_df,
+            forecast_time,
+            config,
+            cache_dir,
+            scenario=scenario,
+        )
         exposure_layers[scenario] = exposure
         print(f"\n[Exposure Layer: landslide ({scenario})]")
         exposure.plot(output_dir=output_subdir)
@@ -90,6 +115,7 @@ def run_landslide_analysis(config, vuln_type, hurricane_df, forecast_time, outpu
     with open(out_path, "w") as f:
         f.write(summary)
     print(f"Saved impact summary: {out_path}")
+
 
 def main():
     # Load configuration
@@ -146,7 +172,9 @@ def main():
         scenarios = run.get("scenarios", ["mean"])
         for vuln_type in run["vulnerabilities"]:
             if exposure_type == "landslide":
-                print(f"\n=== Running landslide analysis: Vulnerability={vuln_type} ===")
+                print(
+                    f"\n=== Running landslide analysis: Vulnerability={vuln_type} ==="
+                )
                 run_landslide_analysis(
                     config,
                     vuln_type,
@@ -157,7 +185,9 @@ def main():
                     scenarios,
                 )
             else:
-                print(f"\n=== Running analysis: Exposure={exposure_type}, Vulnerability={vuln_type} ===")
+                print(
+                    f"\n=== Running analysis: Exposure={exposure_type}, Vulnerability={vuln_type} ==="
+                )
                 run_analysis(
                     config,
                     exposure_type,
@@ -168,6 +198,7 @@ def main():
                     cache_dir,
                 )
     print(f"\nImpact analysis complete! Results saved to: {output_dir}")
+
 
 if __name__ == "__main__":
     main()
