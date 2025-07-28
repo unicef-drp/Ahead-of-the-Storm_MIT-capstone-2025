@@ -16,7 +16,7 @@ flood:
     h100: "nic_flood_CDRI_h100.tif"
     h500: "nic_flood_CDRI_h500.tif"
     h1000: "nic_flood_CDRI_h1000.tif"
-  discharge_file: "data/preprocessed/flood/nicaragua_discharge_20201117_felix.geojson"
+  discharge_file: "data/preprocessed/flood/nicaragua_discharge_20201117.geojson"
   output_directory: "data/preprocessed/flood"
 
 # Download settings for river discharge

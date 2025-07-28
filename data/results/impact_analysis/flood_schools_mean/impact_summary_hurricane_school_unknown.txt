@@ -1,8 +1,0 @@
-Impact summary for hurricane_school_unknown
-Forecast time: unknown
-Vulnerability type: school
-
-Results:
-Expected affected: 82.20
-Best case (min): 663.00 (ensemble member 32)
-Worst case (max): 809.00 (ensemble member 31)

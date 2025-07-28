@@ -1,3 +1,6 @@
+import os
+import glob
+
 from src.impact_analysis.layers.hurricane import HurricaneExposureLayer
 from src.impact_analysis.layers.landslide import LandslideExposureLayer
 from src.impact_analysis.layers.flood import FloodExposureLayer
@@ -52,15 +55,33 @@ def get_exposure_layer(
         from src.utils.path_utils import get_data_path
         import re
 
-        # Find the latest landslide file
-        landslide_dir = get_data_path("data/preprocessed/landslide")
-        landslide_files = list(
-            landslide_dir.glob("landslide_forecast_48h_*_nicaragua.tif")
+        # Check if cached landslide exposure exists first
+        cache_dir = cache_dir or get_config_value(
+            config,
+            "impact_analysis.output.cache_directory",
+            "data/results/impact_analysis/cache/",
         )
-        if not landslide_files:
-            raise FileNotFoundError("No landslide data files found!")
-        # Use the most recent file
-        landslide_file = str(max(landslide_files, key=lambda x: x.stat().st_mtime))
+        
+        # Check for existing cache files
+        cache_pattern = os.path.join(cache_dir, "landslide_exposure_*")
+        existing_cache = glob.glob(cache_pattern)
+        
+        if existing_cache:
+            # Use cached data - provide a dummy file path since caching will handle it
+            print(f"Found {len(existing_cache)} cached landslide exposure files, using cached data")
+            landslide_file = "cached"  # Dummy path since cache will be used
+        else:
+            # Find the latest landslide file only if no cache exists
+            landslide_dir = get_data_path("data/preprocessed/landslide")
+            landslide_files = list(
+                landslide_dir.glob("landslide_forecast_48h_*_nicaragua.tif")
+            )
+            if not landslide_files:
+                raise FileNotFoundError("No landslide data files found!")
+            # Use the most recent file
+            landslide_file = str(max(landslide_files, key=lambda x: x.stat().st_mtime))
+            print(f"Using landslide file: {landslide_file}")
+            
         return LandslideExposureLayer(
             landslide_file=landslide_file,
             config=config,
