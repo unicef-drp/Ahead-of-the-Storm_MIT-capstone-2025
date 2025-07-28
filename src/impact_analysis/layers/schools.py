@@ -44,7 +44,11 @@ class SchoolVulnerabilityLayer(VulnerabilityLayer):
             
             # Use raster-based computation for high-res
             if self.resolution_context == "landslide_computation":
-                from src.impact_analysis.layers.raster_grid import compute_vulnerability_raster
+                from src.impact_analysis.helper.raster_grid import compute_vulnerability_raster, get_nicaragua_bounds
+                
+                # Use the same bounds as the exposure layer to ensure grid compatibility
+                bounds = get_nicaragua_bounds()
+                grid_res = self.get_resolution()
                 
                 school_data_path = get_config_value(
                     self.config,
@@ -59,6 +63,7 @@ class SchoolVulnerabilityLayer(VulnerabilityLayer):
                         "Unique school_count values:", np.unique(grid_gdf["school_count"])
                     )
                     print("school_count dtype:", grid_gdf["school_count"].dtype)
+                    print(f"High-res vulnerability grid shape: {len(grid_gdf)} cells")
                 else:
                     # Fallback to vector grid if no schools data
                     grid_gdf = self._create_vector_grid(bounds, grid_res)

@@ -97,8 +97,8 @@ POVERTY_TABLE["region_norm"] = POVERTY_TABLE["Region"].apply(normalize_name)
 
 
 class PovertyVulnerabilityLayer(VulnerabilityLayer):
-    def __init__(self, config, age_groups=None, gender="both", cache_dir=None):
-        super().__init__(config)
+    def __init__(self, config, age_groups=None, gender="both", cache_dir=None, resolution_context=None):
+        super().__init__(config, resolution_context)
         self.age_groups = (
             age_groups if age_groups is not None else list(range(0, 85, 5))
         )
@@ -132,20 +132,23 @@ class PovertyVulnerabilityLayer(VulnerabilityLayer):
         cache_path = self._cache_path()
 
         def compute_func():
-            # Get population grid
+            # Get population grid first
             pop_layer = PopulationVulnerabilityLayer(
-                self.config, self.age_groups, self.gender, self.cache_dir
+                self.config, self.age_groups, self.gender, self.cache_dir, self.resolution_context
             )
             pop_gdf = pop_layer.compute_grid()
+            
             # Load regions
             regions_gdf = gpd.read_file(
                 get_data_path("data/raw/gadm/nicaragua_departments.geojson")
             )
             regions_gdf["region_norm"] = regions_gdf["NAME_1"].apply(normalize_name)
+            
             # Merge poverty data
             regions_gdf = regions_gdf.merge(
                 POVERTY_TABLE[["region_norm", "H"]], on="region_norm", how="left"
             )
+            
             # Compute average poverty rate for regions adjacent to Lago Nicaragua
             adjacent_regions = ["rivas", "granada", "masaya", "managua"]
             avg_adjacent_h = (
@@ -154,23 +157,37 @@ class PovertyVulnerabilityLayer(VulnerabilityLayer):
                 ].mean()
                 / 100.0
             )
-            # For each grid cell, find which region it falls in and apply poverty %
-            poverty_counts = []
-            for idx, row in pop_gdf.iterrows():
-                cell = row["geometry"]
-                pop = row["population_count"]
-                region_match = regions_gdf[regions_gdf.contains(cell)]
-                if not region_match.empty and not np.isnan(pop):
-                    region_name = region_match.iloc[0]["region_norm"]
-                    if region_name == "lago nicaragua":
-                        h = avg_adjacent_h
-                    else:
-                        h = region_match.iloc[0]["H"] / 100.0
-                    poverty_counts.append(pop * h)
-                else:
-                    poverty_counts.append(0)
-            pop_gdf["poverty_count"] = poverty_counts
-            return pop_gdf
+            
+            # Use efficient spatial join between population grid and regions
+            joined_gdf = gpd.sjoin(pop_gdf, regions_gdf, how="left", predicate="within")
+            
+            # Vectorized poverty calculation: population * poverty_rate
+            # Initialize poverty counts
+            joined_gdf["poverty_count"] = 0.0
+            
+            # Handle Lago Nicaragua case
+            lago_mask = joined_gdf["region_norm"] == "lago nicaragua"
+            joined_gdf.loc[lago_mask, "poverty_count"] = joined_gdf.loc[lago_mask, "population_count"] * avg_adjacent_h
+            
+            # Handle other regions
+            other_mask = (joined_gdf["region_norm"] != "lago nicaragua") & (~joined_gdf["region_norm"].isna())
+            joined_gdf.loc[other_mask, "poverty_count"] = joined_gdf.loc[other_mask, "population_count"] * (joined_gdf.loc[other_mask, "H"] / 100.0)
+            
+            # Group by original grid cell and sum poverty counts (in case of multiple regions)
+            result_gdf = joined_gdf.groupby(joined_gdf.index).agg({
+                "geometry": "first",
+                "population_count": "first",
+                "poverty_count": "sum"
+            }).reset_index(drop=True)
+            
+            # Ensure we have a clean GeoDataFrame
+            final_gdf = gpd.GeoDataFrame({
+                "geometry": result_gdf["geometry"],
+                "population_count": result_gdf["population_count"],
+                "poverty_count": result_gdf["poverty_count"]
+            }, crs="EPSG:4326")
+            
+            return final_gdf
 
         self.grid_gdf = self._load_or_compute_grid(
             cache_path, "poverty_count", compute_func
@@ -182,12 +199,12 @@ class PovertyVulnerabilityLayer(VulnerabilityLayer):
         grid_gdf = self.compute_grid()
         age_str = "_".join(map(str, self.age_groups))
         output_filename = f"poverty_vulnerability_{self.gender}_ages_{age_str}.png"
-        plot_title = f"Poverty Vulnerability Heatmap (Log Scale)\nGender: {self.gender}, Ages: {self.age_groups}"
+        plot_title = f"People in Poverty Vulnerability Heatmap (Log Scale)\nGender: {self.gender}, Ages: {self.age_groups}"
         self._plot_vulnerability_grid(
             grid_gdf,
             value_column="poverty_count",
             cmap="Purples",
-            legend_label="Log10(Poverty + 1) per Cell",
+            legend_label="Log10(People in Poverty + 1) per Cell",
             output_dir=output_dir,
             output_filename=output_filename,
             plot_title=plot_title,
@@ -200,14 +217,14 @@ class PovertyVulnerabilityLayer(VulnerabilityLayer):
 
 
 class SeverePovertyVulnerabilityLayer(VulnerabilityLayer):
-    def __init__(self, config, age_groups=None, gender="both", cache_dir=None):
-        super().__init__(config)
+    def __init__(self, config, age_groups=None, gender="both", cache_dir=None, resolution_context=None):
+        super().__init__(config, resolution_context)
         self.age_groups = (
             age_groups if age_groups is not None else list(range(0, 85, 5))
         )
         self.gender = gender
         self.grid_gdf = None
-        self._severe_grid = None
+        self._severe_poverty_grid = None
         self.cache_dir = cache_dir or get_config_value(
             config,
             "impact_analysis.output.cache_directory",
@@ -236,22 +253,25 @@ class SeverePovertyVulnerabilityLayer(VulnerabilityLayer):
         cache_path = self._cache_path()
 
         def compute_func():
-            # Get population grid
+            # Get population grid first
             pop_layer = PopulationVulnerabilityLayer(
-                self.config, self.age_groups, self.gender, self.cache_dir
+                self.config, self.age_groups, self.gender, self.cache_dir, self.resolution_context
             )
             pop_gdf = pop_layer.compute_grid()
+            
             # Load regions
             regions_gdf = gpd.read_file(
                 get_data_path("data/raw/gadm/nicaragua_departments.geojson")
             )
             regions_gdf["region_norm"] = regions_gdf["NAME_1"].apply(normalize_name)
+            
             # Merge poverty data
             regions_gdf = regions_gdf.merge(
                 POVERTY_TABLE[["region_norm", "Severe_Poverty"]],
                 on="region_norm",
                 how="left",
             )
+            
             # Compute average severe poverty rate for regions adjacent to Lago Nicaragua
             adjacent_regions = ["rivas", "granada", "masaya", "managua"]
             avg_adjacent_s = (
@@ -260,42 +280,54 @@ class SeverePovertyVulnerabilityLayer(VulnerabilityLayer):
                 ].mean()
                 / 100.0
             )
-            # For each grid cell, find which region it falls in and apply severe poverty %
-            severe_counts = []
-            for idx, row in pop_gdf.iterrows():
-                cell = row["geometry"]
-                pop = row["population_count"]
-                region_match = regions_gdf[regions_gdf.contains(cell)]
-                if not region_match.empty and not np.isnan(pop):
-                    region_name = region_match.iloc[0]["region_norm"]
-                    if region_name == "lago nicaragua":
-                        s = avg_adjacent_s
-                    else:
-                        s = region_match.iloc[0]["Severe_Poverty"] / 100.0
-                    severe_counts.append(pop * s)
-                else:
-                    severe_counts.append(0)
-            pop_gdf["severepoverty_count"] = severe_counts
-            return pop_gdf
+            
+            # Use efficient spatial join between population grid and regions
+            joined_gdf = gpd.sjoin(pop_gdf, regions_gdf, how="left", predicate="within")
+            
+            # Vectorized severe poverty calculation: population * severe_poverty_rate
+            # Initialize severe poverty counts
+            joined_gdf["severepoverty_count"] = 0.0
+            
+            # Handle Lago Nicaragua case
+            lago_mask = joined_gdf["region_norm"] == "lago nicaragua"
+            joined_gdf.loc[lago_mask, "severepoverty_count"] = joined_gdf.loc[lago_mask, "population_count"] * avg_adjacent_s
+            
+            # Handle other regions
+            other_mask = (joined_gdf["region_norm"] != "lago nicaragua") & (~joined_gdf["region_norm"].isna())
+            joined_gdf.loc[other_mask, "severepoverty_count"] = joined_gdf.loc[other_mask, "population_count"] * (joined_gdf.loc[other_mask, "Severe_Poverty"] / 100.0)
+            
+            # Group by original grid cell and sum severe poverty counts (in case of multiple regions)
+            result_gdf = joined_gdf.groupby(joined_gdf.index).agg({
+                "geometry": "first",
+                "population_count": "first",
+                "severepoverty_count": "sum"
+            }).reset_index(drop=True)
+            
+            # Ensure we have a clean GeoDataFrame
+            final_gdf = gpd.GeoDataFrame({
+                "geometry": result_gdf["geometry"],
+                "population_count": result_gdf["population_count"],
+                "severepoverty_count": result_gdf["severepoverty_count"]
+            }, crs="EPSG:4326")
+            
+            return final_gdf
 
         self.grid_gdf = self._load_or_compute_grid(
             cache_path, "severepoverty_count", compute_func
         )
-        self._severe_grid = self.grid_gdf["severepoverty_count"].values
+        self._severe_poverty_grid = self.grid_gdf["severepoverty_count"].values
         return self.grid_gdf
 
     def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
         grid_gdf = self.compute_grid()
         age_str = "_".join(map(str, self.age_groups))
-        output_filename = (
-            f"severepoverty_vulnerability_{self.gender}_ages_{age_str}.png"
-        )
-        plot_title = f"Severe Poverty Vulnerability Heatmap (Log Scale)\nGender: {self.gender}, Ages: {self.age_groups}"
+        output_filename = f"severe_poverty_vulnerability_{self.gender}_ages_{age_str}.png"
+        plot_title = f"People in Severe Poverty Vulnerability Heatmap (Log Scale)\nGender: {self.gender}, Ages: {self.age_groups}"
         self._plot_vulnerability_grid(
             grid_gdf,
             value_column="severepoverty_count",
-            cmap="Purples",
-            legend_label="Log10(Severe Poverty + 1) per Cell",
+            cmap="Reds",
+            legend_label="Log10(People in Severe Poverty + 1) per Cell",
             output_dir=output_dir,
             output_filename=output_filename,
             plot_title=plot_title,

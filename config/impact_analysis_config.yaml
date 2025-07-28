@@ -2,52 +2,37 @@
 # This file contains parameters for generating heatmaps and risk analysis
 
 impact_analysis:
-  # Input data sources
-  input:
-    # Hurricane data sources (in order of preference)
-    hurricane_data:
-      synthetic_file: "data/preprocessed/weatherlab/synthetic/processed_FNV3_2024_11_04_00_00_ensemble_data_synthetic.csv"
-      original_file: "data/preprocessed/weatherlab/processed/processed_FNV3_2024_11_04_00_00_ensemble_data.csv"
-    
-    # School data source
-    school_data: "data/raw/sinapred/nic_schools.geojson"
-    
-    # Nicaragua boundary data
-    nicaragua_boundary: "data/raw/osm/nicaragua_boundary.geojson"
-    # Flood raster for exposure analysis
-    flood_data:
-      enhanced_flood_file: "data/preprocessed/flood/nicaragua_flood_extent_20201117.tif"
-  wind_region:
-    smoothing_method: "bspline"  # Options: bspline, roundcorner, superspline, none
-    smoothing_params:
-      smoothing_factor: 0
-      num_points: 200
-
-  # Output configuration
-  output:
-    # Base directory for all impact analysis results
-    base_directory: "data/results/impact_analysis"
-    
-    # Subdirectories for different types of outputs
-    plots_directory: "plots"
-    reports_directory: "reports"
-    data_directory: "processed_data"
-
-  # Grid and visualization parameters
+  # Grid resolution settings
   grid:
-    # Grid resolution in degrees
     resolution_degrees: 0.1
-    # Landslide-specific resolution settings
-    landslide:
-      computation_resolution: 0.01  # High-res for computation (more accurate)
-      visualization_resolution: 0.1  # Standard for plots (readable)
-
-  # Analysis runs: specify which exposures and vulnerabilities to analyze
+    landslide_computation_resolution_degrees: 0.01
+    landslide_visualization_resolution_degrees: 0.1
+  
+  # Landslide ensemble configuration
+  landslide:
+    ensemble:
+      num_members: 50
+      spatial_correlation_radius: 2
+      correlation_method: "gaussian_local"
+      random_seed: 42
+  
+  # Output settings
+  output:
+    base_directory: "data/results/impact_analysis"
+    cache_directory: "data/results/impact_analysis/cache"
+  
+  # Input data paths
+  input:
+    school_data: "data/raw/sinapred/nic_schools.geojson"
+    population_data: "data/raw/census"
+    poverty_data: "data/raw/gadm/nicaragua_departments.geojson"
+    shelter_data: "data/raw/sinapred/shelters_nic.geojson"
+    health_facility_data: "data/raw/sinapred/health_facilities_nic.geojson"
+    flood_data: "data/preprocessed/flood/nicaragua_flood_extent_20201117.tif"
+    landslide_data: "data/preprocessed/landslide"
+    hurricane_data: "data/preprocessed/weatherlab/synthetic/processed_FNV3_2024_11_04_00_00_ensemble_data_synthetic.csv"
+  
+  # Analysis runs
   runs:
-    # - exposure: hurricane
-    #   vulnerabilities: [schools, school_population, health_facilities, health_facilities_population, shelters, shelters_population, population, poverty, poverty_children, severe_poverty, severe_poverty_children]
-    - exposure: landslide
-      scenarios: [mean, min, max]
-      vulnerabilities: [schools]
-    # - exposure: flood
-    #   vulnerabilities: [schools, poverty_children]
+    landslide:
+      - severe_poverty_children

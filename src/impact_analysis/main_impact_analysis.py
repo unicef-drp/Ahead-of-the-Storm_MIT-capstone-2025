@@ -3,6 +3,8 @@ import sys
 import yaml
 import pandas as pd
 from pathlib import Path
+import numpy as np
+import time
 
 from src.impact_analysis.helper.factories import (
     get_exposure_layer,
@@ -63,72 +65,114 @@ def run_analysis(
     impact.save_impact_summary(output_dir=output_subdir)
 
 
-def run_landslide_analysis(
-    config, vuln_type, hurricane_df, forecast_time, output_dir, cache_dir, scenarios
-):
-    # Output subdir naming
-    output_subdir = ensure_subdir(output_dir, f"landslide_{vuln_type}")
-    metrics = {}
-    exposure_layers = {}
-    impact_layers = {}
-
-    # 1. Compute and plot all 3 exposure scenarios (using visualization resolution)
-    for scenario in scenarios:
-        exposure = get_exposure_layer(
-            "landslide",
-            hurricane_df,
-            forecast_time,
-            config,
-            cache_dir,
-            scenario=scenario,
-            resolution_context="landslide_visualization",
-        )
-        exposure_layers[scenario] = exposure
-        print(f"\n[Exposure Layer: landslide ({scenario})]")
-        exposure.plot(output_dir=output_subdir)
-
-    # 2. Compute and plot vulnerability once (using visualization resolution)
-    vulnerability = get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context="landslide_visualization")
-    print(f"\n[Vulnerability Layer: {vuln_type}]")
-    vulnerability.plot(output_dir=output_subdir)
-
-    # 3. Compute and plot all 3 impact scenarios
-    for scenario in scenarios:
-        # Create high-res exposure layer for computation
-        high_res_exposure = get_exposure_layer(
-            "landslide",
-            hurricane_df,
-            forecast_time,
-            config,
-            cache_dir,
-            scenario=scenario,
-            resolution_context="landslide_computation",
-        )
-        # Create high-res vulnerability layer for computation
-        high_res_vulnerability = get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context="landslide_computation")
-        
-        # Create impact layer with high-res layers
-        impact = get_impact_layer(high_res_exposure, high_res_vulnerability, config)
-        impact_layers[scenario] = impact
-        print(f"\n[Impact Layer: landslide x {vuln_type} ({scenario})]")
-        impact.plot(output_dir=output_subdir)
-        impact.plot_binary_probability(output_dir=output_subdir)
-        # Collect metrics
-        metrics[scenario] = impact.expected_impact()
-
-    # 4. Write a single summary txt with avg, best, worst metrics
-    summary = (
-        f"Impact summary for landslide_{vuln_type}\n"
-        f"Vulnerability type: {vuln_type}\n"
-        f"Scenarios: {', '.join(scenarios)}\n"
-        f"Expected impact (avg): {metrics['mean']:.2f}\n"
-        f"Best case (min): {metrics['min']:.2f}\n"
-        f"Worst case (max): {metrics['max']:.2f}\n"
+def run_landslide_analysis(config, cache_dir, output_dir, vuln_type):
+    """Run landslide impact analysis for a specific vulnerability type."""
+    print(f"\n=== Running landslide analysis: Vulnerability={vuln_type} ===")
+    
+    # Create output directory for this vulnerability
+    vuln_output_dir = ensure_subdir(output_dir, f"landslide_{vuln_type}")
+    
+    # Track total start time
+    total_start_time = time.time()
+    
+    # Create exposure layer
+    print(f"\n[Exposure Layer: landslide (mean)]")
+    exposure_start = time.time()
+    exposure = get_exposure_layer(
+        "landslide",
+        None,  # hurricane_df
+        "2024-11-04",  # forecast_time
+        config,
+        cache_dir,
+        resampling_method="mean",
+        resolution_context="landslide_visualization"
     )
-    out_path = os.path.join(output_subdir, f"impact_summary_landslide_{vuln_type}.txt")
-    with open(out_path, "w") as f:
-        f.write(summary)
-    print(f"Saved impact summary: {out_path}")
+    
+    # Plot exposure layer
+    exposure.plot(output_dir=vuln_output_dir)
+    exposure_time = time.time() - exposure_start
+    print(f"  ✓ Exposure layer completed in {exposure_time:.2f}s")
+    
+    # Create vulnerability layer for visualization
+    print(f"\n[Vulnerability Layer: {vuln_type}]")
+    vuln_start = time.time()
+    vulnerability_viz = get_vulnerability_layer(
+        vuln_type,
+        config,
+        cache_dir,
+        resolution_context="landslide_visualization"
+    )
+    
+    # Plot vulnerability layer
+    vulnerability_viz.plot(output_dir=vuln_output_dir)
+    vuln_time = time.time() - vuln_start
+    print(f"  ✓ Vulnerability layer completed in {vuln_time:.2f}s")
+    
+    # Create impact layer
+    print(f"\n[Impact Layer: landslide x {vuln_type} (ensemble)]")
+    impact_start = time.time()
+    impact = get_impact_layer(exposure, vulnerability_viz, config)
+    
+    # Plot impact layer
+    impact.plot(output_dir=vuln_output_dir)
+    
+    # Plot binary probability
+    print(f"\n[Binary Probability: landslide x {vuln_type} (ensemble)]")
+    impact.plot_binary_probability(output_dir=vuln_output_dir)
+    impact_time = time.time() - impact_start
+    print(f"  ✓ Impact layer completed in {impact_time:.2f}s")
+    
+    # Create high-res vulnerability layer for computation/statistics
+    print(f"\n[Ensemble Analysis: landslide x {vuln_type}]")
+    ensemble_start = time.time()
+    print("Generating 50 ensemble members with spatial correlation...")
+    
+    vulnerability_comp = get_vulnerability_layer(
+        vuln_type,
+        config,
+        cache_dir,
+        resolution_context="landslide_computation"
+    )
+    
+    # Get ensemble statistics
+    stats = impact.exposure_layer.get_ensemble_impact(vulnerability_comp)
+    ensemble_stats = impact.exposure_layer.get_best_worst_case(vulnerability_comp)
+    mean_impact = np.mean(stats)
+    std_impact = np.std(stats)
+    min_impact = np.min(stats)
+    max_impact = np.max(stats)
+    
+    # Calculate expected impact using high-res grids
+    exposure_comp = get_exposure_layer(
+        "landslide",
+        None,  # hurricane_df
+        "2024-11-04",  # forecast_time
+        config,
+        cache_dir,
+        resampling_method="mean",
+        resolution_context="landslide_computation"
+    )
+    exposure_comp_grid = exposure_comp.compute_grid()
+    vulnerability_comp_grid = vulnerability_comp.compute_grid()
+    expected_impact = np.sum(exposure_comp_grid['probability'].values * vulnerability_comp_grid[vulnerability_comp.value_column].values)
+    
+    print(f"Ensemble Statistics:")
+    print(f"  Expected Impact (mean probability): {expected_impact:.2f}")
+    print(f"  Best Case (ensemble minimum): {min_impact:.2f}")
+    print(f"  Worst Case (ensemble maximum): {max_impact:.2f}")
+    print(f"  Ensemble Mean: {mean_impact:.2f}")
+    print(f"  Ensemble Std Dev: {std_impact:.2f}")
+    
+    # Save impact summary
+    impact.save_impact_summary(output_dir=vuln_output_dir)
+    
+    ensemble_time = time.time() - ensemble_start
+    print(f"  ✓ Ensemble analysis completed in {ensemble_time:.2f}s")
+    
+    total_time = time.time() - total_start_time
+    print(f"\n✓ Total analysis completed in {total_time:.2f}s")
+    
+    return impact
 
 
 def main():
@@ -177,26 +221,22 @@ def main():
     print(f"Using forecast time: {chosen_forecast}")
 
     # Run all combos from config
-    runs = config.get("impact_analysis", {}).get("runs", [])
+    runs = config.get("impact_analysis", {}).get("runs", {})
     if not runs:
         print("No runs specified in config under impact_analysis.runs")
         sys.exit(1)
-    for run in runs:
-        exposure_type = run["exposure"]
-        scenarios = run.get("scenarios", ["mean"])
-        for vuln_type in run["vulnerabilities"]:
+    
+    for exposure_type, vulnerabilities in runs.items():
+        for vuln_type in vulnerabilities:
             if exposure_type == "landslide":
                 print(
                     f"\n=== Running landslide analysis: Vulnerability={vuln_type} ==="
                 )
                 run_landslide_analysis(
                     config,
-                    vuln_type,
-                    hurricane_df,
-                    chosen_forecast,
-                    output_dir,
                     cache_dir,
-                    scenarios,
+                    output_dir,
+                    vuln_type,
                 )
             else:
                 print(

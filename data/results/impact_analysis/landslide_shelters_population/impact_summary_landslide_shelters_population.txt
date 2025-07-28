@@ -1,6 +1,19 @@
-Impact summary for landslide_shelters_population
-Vulnerability type: shelters_population
-Scenarios: mean, min, max
-Expected impact (avg): 5602.90
-Best case (min): 3244.56
-Worst case (max): 11661.11
+Landslide Impact Analysis Summary
+==================================================
+
+Vulnerability Type: shelters_population
+Exposure Method: Ensemble (mean probability with spatial correlation)
+
+Ensemble Statistics (50 members):
+  Expected Impact (mean probability): 1957.67
+  Best Case (ensemble minimum): 550.00
+  Worst Case (ensemble maximum): 7737.00
+  Ensemble Mean: 2307.84
+  Ensemble Median: 1949.00
+  Ensemble Std Dev: 1644.95
+
+Ensemble Distribution:
+  550.00 (min) - 7737.00 (max)
+  2307.84 ± 1644.95 (mean ± std)
+
+Analysis completed with spatial correlation and ensemble sampling.

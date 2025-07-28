@@ -21,7 +21,7 @@ from src.utils.config_utils import get_config_value
 
 
 def get_exposure_layer(
-    exposure_type, hurricane_df, forecast_time, config, cache_dir, scenario="mean", resolution_context=None
+    exposure_type, hurricane_df, forecast_time, config, cache_dir, resampling_method="mean", resolution_context=None
 ):
     if exposure_type == "hurricane":
         return HurricaneExposureLayer(hurricane_df, forecast_time, config, cache_dir)
@@ -57,7 +57,7 @@ def get_exposure_layer(
             landslide_file=landslide_file,
             config=config,
             cache_dir=cache_dir,
-            resampling_method=scenario,
+            resampling_method=resampling_method,
             resolution_context=resolution_context,
         )
     raise ValueError(f"Unknown exposure type: {exposure_type}")
@@ -87,6 +87,10 @@ def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=Non
     if vuln_type == "population":
         return PopulationVulnerabilityLayer(
             config, age_groups=list(range(0, 85, 5)), gender="both", cache_dir=cache_dir, resolution_context=resolution_context
+        )
+    if vuln_type == "children":
+        return PopulationVulnerabilityLayer(
+            config, age_groups=[0, 5, 10, 15], gender="both", cache_dir=cache_dir, resolution_context=resolution_context
         )
     if vuln_type == "poverty":
         return PovertyVulnerabilityLayer(

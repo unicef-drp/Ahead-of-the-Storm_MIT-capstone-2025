@@ -7,8 +7,9 @@ from src.utils.config_utils import get_config_value
 class ExposureLayer(abc.ABC):
     """Abstract base class for hazard exposure layers (e.g., hurricane, flood)."""
 
-    def __init__(self, config):
+    def __init__(self, config, resolution_context=None):
         self.config = config
+        self.resolution_context = resolution_context
 
     @abc.abstractmethod
     def compute_grid(self) -> gpd.GeoDataFrame:
@@ -37,6 +38,19 @@ class VulnerabilityLayer(abc.ABC):
     def plot(self, ax=None):
         """Plot the vulnerability layer."""
         pass
+
+    def get_visualization_grid(self):
+        """Get the vulnerability grid at visualization resolution."""
+        if self.resolution_context == "landslide_visualization":
+            return self.compute_grid()
+        else:
+            # Create temporary layer with visualization context
+            temp_layer = type(self)(
+                self.config,
+                cache_dir=self.cache_dir,
+                resolution_context="landslide_visualization"
+            )
+            return temp_layer.compute_grid()
 
     def get_resolution(self):
         """Get the appropriate resolution based on context."""
@@ -122,6 +136,7 @@ class VulnerabilityLayer(abc.ABC):
         ax.set_title(plot_title)
         plt.tight_layout()
         out_path = os.path.join(output_dir, output_filename)
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
         plt.savefig(out_path, dpi=300, bbox_inches="tight")
         print(f"Saved vulnerability plot: {out_path}")
         plt.close(fig)

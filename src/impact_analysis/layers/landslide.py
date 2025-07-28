@@ -1,24 +1,27 @@
+#!/usr/bin/env python3
+"""
+Landslide exposure layer for impact analysis.
+"""
+
 import os
 import numpy as np
 import geopandas as gpd
 import matplotlib.pyplot as plt
-import rasterio
-from rasterio.features import geometry_mask
+from rasterio.mask import geometry_mask
+from scipy.ndimage import gaussian_filter
 from shapely.geometry import box
 from src.impact_analysis.layers.base import ExposureLayer
-from src.utils.hurricane_geom import get_nicaragua_boundary
 from src.utils.config_utils import get_config_value
 from src.utils.path_utils import get_data_path
+from src.utils.hurricane_geom import get_nicaragua_boundary
+
 
 
 class LandslideExposureLayer(ExposureLayer):
-    """Landslide exposure layer that reads raster data and creates probability grid."""
-    
     def __init__(self, landslide_file, config, cache_dir=None, resampling_method="mean", resolution_context=None):
-        super().__init__(config)
+        super().__init__(config, resolution_context)
         self.landslide_file = landslide_file
-        self.resampling_method = resampling_method  # mean, min, max
-        self.resolution_context = resolution_context  # For high-res computation
+        self.resampling_method = resampling_method
         self.grid_gdf = None
         self._prob_grid = None
         self.cache_dir = cache_dir or get_config_value(
@@ -27,69 +30,81 @@ class LandslideExposureLayer(ExposureLayer):
             "data/results/impact_analysis/cache/",
         )
         os.makedirs(self.cache_dir, exist_ok=True)
+        
+        # Ensemble parameters
+        self.ensemble_config = get_config_value(
+            config, 
+            "impact_analysis.landslide.ensemble", 
+            {
+                "num_members": 50,
+                "spatial_correlation_radius": 2,
+                "correlation_method": "gaussian_local",
+                "random_seed": 42
+            }
+        )
+        self.ensemble_members = None
+        self.ensemble_impacts = None
 
     def get_resolution(self):
-        """Get the appropriate resolution based on context."""
+        """Get resolution based on context."""
         if self.resolution_context == "landslide_computation":
             return get_config_value(
-                self.config, "impact_analysis.grid.landslide.computation_resolution", 0.01
+                self.config, 
+                "impact_analysis.grid.landslide_computation_resolution_degrees", 
+                0.01
             )
         elif self.resolution_context == "landslide_visualization":
             return get_config_value(
-                self.config, "impact_analysis.grid.landslide.visualization_resolution", 0.1
+                self.config, 
+                "impact_analysis.grid.landslide_visualization_resolution_degrees", 
+                0.1
             )
         else:
             return get_config_value(
-                self.config, "impact_analysis.grid.resolution_degrees", 0.1
+                self.config, 
+                "impact_analysis.grid.resolution_degrees", 
+                0.1
             )
 
     def _cache_path(self):
-        """Generate cache path for landslide exposure layer with resampling method."""
-        # Extract date from filename if possible, otherwise use 'unknown'
-        import re
-        from pathlib import Path
-        
-        filename = Path(self.landslide_file).name
-        match = re.search(r'(\d{8}T\d{4})', filename)
-        date_str = match.group(1) if match else 'unknown'
-        
+        resolution = self.get_resolution()
         if self.resolution_context:
-            resolution = self.get_resolution()
             # Use parquet for high-res computation, gpkg for visualization
             if self.resolution_context == "landslide_computation":
-                return os.path.join(self.cache_dir, f"landslide_exposure_{date_str}_{self.resampling_method}_{self.resolution_context}_{resolution}deg.parquet")
+                return os.path.join(self.cache_dir, f"landslide_exposure_20250716T0600_{self.resampling_method}_{self.resolution_context}_{resolution}deg.parquet")
             else:
-                return os.path.join(self.cache_dir, f"landslide_exposure_{date_str}_{self.resampling_method}_{self.resolution_context}_{resolution}deg.gpkg")
+                return os.path.join(self.cache_dir, f"landslide_exposure_20250716T0600_{self.resampling_method}_{self.resolution_context}_{resolution}deg.gpkg")
         else:
-            return os.path.join(self.cache_dir, f"landslide_exposure_{date_str}_{self.resampling_method}.gpkg")
+            return os.path.join(self.cache_dir, f"landslide_exposure_20250716T0600_{self.resampling_method}.gpkg")
 
     def compute_grid(self):
-        """Compute the landslide exposure probability grid matching hurricane grid structure."""
         if self.grid_gdf is not None:
             return self.grid_gdf
-            
+        
         cache_path = self._cache_path()
         
         def compute_func():
             # Use raster-based computation for high-res
             if self.resolution_context == "landslide_computation":
-                from src.impact_analysis.layers.raster_grid import compute_exposure_raster, get_nicaragua_bounds
+                from src.impact_analysis.helper.raster_grid import compute_exposure_raster, get_nicaragua_bounds
                 
                 bounds = get_nicaragua_bounds()
                 grid_res = self.get_resolution()
+                print(f"High-res exposure grid bounds: {bounds}")
+                print(f"High-res exposure grid resolution: {grid_res} degrees")
                 grid_gdf = compute_exposure_raster(
                     self.landslide_file, 
                     bounds, 
                     grid_res, 
                     self.resampling_method
                 )
+                print(f"High-res exposure grid shape: {len(grid_gdf)} cells")
             else:
                 # Use vector grid for visualization
                 grid_res = self.get_resolution()
                 nicaragua_gdf = get_nicaragua_boundary()
                 minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
                 
-                # Create grid cells using the same pattern as hurricane layer
                 grid_cells = []
                 x_coords = np.arange(minx, maxx, grid_res)
                 y_coords = np.arange(miny, maxy, grid_res)
@@ -100,12 +115,11 @@ class LandslideExposureLayer(ExposureLayer):
                 
                 grid_gdf = gpd.GeoDataFrame(grid_cells, columns=["geometry"], crs="EPSG:4326")
                 
-                # Sample landslide raster values for each grid cell
+                # Sample landslide raster values to grid
                 probabilities = self._sample_raster_to_grid(grid_gdf)
                 grid_gdf["probability"] = probabilities
                 
-                # Keep ALL grid cells like hurricane layer - assign 0 to cells with no valid data
-                grid_gdf["probability"] = grid_gdf["probability"].fillna(0.0)
+                # Ensure non-negative probabilities
                 grid_gdf.loc[grid_gdf["probability"] < 0, "probability"] = 0.0
             
             return grid_gdf
@@ -149,6 +163,8 @@ class LandslideExposureLayer(ExposureLayer):
 
     def _sample_raster_to_grid(self, grid_gdf):
         """Sample landslide raster values to grid cells using specified resampling method."""
+        import rasterio
+        
         probabilities = []
         
         try:
@@ -229,6 +245,141 @@ class LandslideExposureLayer(ExposureLayer):
         
         return probabilities
 
+    def apply_spatial_correlation(self, probability_grid, correlation_radius=None):
+        """
+        Apply spatial correlation to probability grid.
+        
+        Args:
+            probability_grid: 1D numpy array of probabilities
+            correlation_radius: Radius for spatial smoothing (in grid cells)
+        
+        Returns:
+            correlated_probabilities: 1D numpy array with spatial correlation
+        """
+        if correlation_radius is None:
+            correlation_radius = self.ensemble_config.get("spatial_correlation_radius", 2)
+        
+        # For now, use a simpler approach: just apply Gaussian smoothing to the 1D array
+        # This maintains the original grid structure without reshaping issues
+        prob_array = np.array(probability_grid)
+        
+        # Apply simple smoothing using convolution with a Gaussian kernel
+        # Create a simple 1D Gaussian kernel
+        kernel_size = 2 * correlation_radius + 1
+        kernel = np.exp(-0.5 * (np.arange(kernel_size) - kernel_size//2)**2 / correlation_radius**2)
+        kernel = kernel / kernel.sum()  # Normalize
+        
+        # Apply convolution
+        smoothed = np.convolve(prob_array, kernel, mode='same')
+        
+        return smoothed
+
+    def generate_ensemble_member(self, correlated_probabilities, seed=None):
+        """
+        Generate single ensemble member using biased coin flipping.
+        
+        Args:
+            correlated_probabilities: 1D array of spatially correlated probabilities
+            seed: Random seed for reproducibility
+        
+        Returns:
+            binary_landslides: 1D binary array (1 = landslide, 0 = no landslide)
+        """
+        if seed is not None:
+            np.random.seed(seed)
+        
+        # Biased coin flipping
+        random_values = np.random.random(len(correlated_probabilities))
+        binary_landslides = (random_values < correlated_probabilities).astype(int)
+        
+        return binary_landslides
+
+    def generate_ensemble(self, num_members=None):
+        """
+        Generate ensemble of landslide realizations.
+        
+        Args:
+            num_members: Number of ensemble members to generate
+        
+        Returns:
+            ensemble_members: List of binary landslide arrays
+        """
+        if num_members is None:
+            num_members = self.ensemble_config.get("num_members", 50)
+        
+        # Get mean probability grid from computation resolution
+        # Create a temporary exposure layer with computation context
+        temp_exposure = LandslideExposureLayer(
+            self.landslide_file, 
+            self.config, 
+            self.cache_dir, 
+            self.resampling_method, 
+            resolution_context="landslide_computation"
+        )
+        grid_gdf = temp_exposure.compute_grid()
+        mean_probabilities = grid_gdf["probability"].values
+        
+        print(f"Generating {num_members} ensemble members...")
+        
+        # Apply spatial correlation
+        correlated_probabilities = self.apply_spatial_correlation(mean_probabilities)
+        
+        # Generate ensemble members
+        ensemble_members = []
+        base_seed = self.ensemble_config.get("random_seed", 42)
+        
+        for i in range(num_members):
+            member = self.generate_ensemble_member(correlated_probabilities, seed=base_seed + i)
+            ensemble_members.append(member)
+        
+        self.ensemble_members = ensemble_members
+        return ensemble_members
+
+    def get_ensemble_impact(self, vulnerability_layer):
+        """
+        Compute impact for each ensemble member.
+        
+        Args:
+            vulnerability_layer: Vulnerability layer to use for impact calculation
+        
+        Returns:
+            ensemble_impacts: List of impact values for each ensemble member
+        """
+        if self.ensemble_members is None:
+            self.generate_ensemble()
+        
+        # Get vulnerability grid
+        vuln_grid = vulnerability_layer.compute_grid()
+        vulnerability_values = vuln_grid[vulnerability_layer.value_column].values
+        
+        # Compute impact for each ensemble member
+        ensemble_impacts = []
+        for member in self.ensemble_members:
+            # Impact = sum of (landslide * vulnerability) across all cells
+            impact = np.sum(member * vulnerability_values)
+            ensemble_impacts.append(impact)
+        
+        self.ensemble_impacts = ensemble_impacts
+        return ensemble_impacts
+
+    def get_best_worst_case(self, vulnerability_layer):
+        """
+        Get best and worst case impacts from ensemble.
+        
+        Args:
+            vulnerability_layer: Vulnerability layer to use for impact calculation
+        
+        Returns:
+            best_case: Minimum impact from ensemble
+            worst_case: Maximum impact from ensemble
+        """
+        ensemble_impacts = self.get_ensemble_impact(vulnerability_layer)
+        
+        best_case = min(ensemble_impacts)
+        worst_case = max(ensemble_impacts)
+        
+        return best_case, worst_case
+
     def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
         """Plot the landslide exposure layer."""
         grid_gdf = self.compute_grid()
@@ -268,6 +419,7 @@ class LandslideExposureLayer(ExposureLayer):
         date_str = match.group(1) if match else 'unknown'
         
         out_path = os.path.join(output_dir, f"landslide_exposure_{date_str}_{self.resampling_method}.png")
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
         plt.savefig(out_path, dpi=300, bbox_inches="tight")
         print(f"Saved landslide exposure plot ({self.resampling_method}): {out_path}")
         

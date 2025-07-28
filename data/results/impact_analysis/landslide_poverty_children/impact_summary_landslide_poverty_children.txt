@@ -1,6 +1,0 @@
-Impact summary for landslide_poverty_children
-Vulnerability type: poverty_children
-Scenarios: mean, min, max
-Expected impact (avg): 4466.98
-Best case (min): 2173.60
-Worst case (max): 9062.55
