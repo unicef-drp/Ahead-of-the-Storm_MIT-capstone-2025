@@ -41,7 +41,7 @@ def run_analysis(
 
     # Create exposure, vulnerability, and impact objects
     exposure = get_exposure_layer(
-        exposure_type, hurricane_df, forecast_time, config, cache_dir, scenario=scenario
+        exposure_type, hurricane_df, forecast_time, config, cache_dir
     )
     vulnerability = get_vulnerability_layer(vuln_type, config, cache_dir)
     impact = get_impact_layer(exposure, vulnerability, config)

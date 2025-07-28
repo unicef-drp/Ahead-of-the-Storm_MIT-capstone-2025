@@ -34,5 +34,29 @@ impact_analysis:
   
   # Analysis runs
   runs:
+    hurricane:
+      - schools
+      - school_population
+      - health_facilities
+      - health_facilities_population
+      - shelters
+      - shelters_population
+      - population
+      - children
+      - poverty
+      - poverty_children
+      - severe_poverty
+      - severe_poverty_children
     landslide:
+      - schools
+      - school_population
+      - health_facilities
+      - health_facilities_population
+      - shelters
+      - shelters_population
+      - population
+      - children
+      - poverty
+      - poverty_children
+      - severe_poverty
       - severe_poverty_children
