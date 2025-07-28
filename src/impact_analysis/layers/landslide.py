@@ -88,6 +88,26 @@ class LandslideExposureLayer(ExposureLayer):
             if self.resolution_context == "landslide_computation":
                 from src.impact_analysis.helper.raster_grid import compute_exposure_raster, get_nicaragua_bounds
                 
+                # If landslide_file is "cached", skip computation since cache will be used
+                if self.landslide_file == "cached":
+                    print("Using cached landslide data, skipping high-res computation")
+                    # Return a dummy grid that will be replaced by cache
+                    bounds = get_nicaragua_bounds()
+                    grid_res = self.get_resolution()
+                    # Create a simple grid structure
+                    minx, miny, maxx, maxy = bounds
+                    grid_cells = []
+                    x_coords = np.arange(minx, maxx, grid_res)
+                    y_coords = np.arange(miny, maxy, grid_res)
+                    
+                    for x in x_coords:
+                        for y in y_coords:
+                            grid_cells.append(box(x, y, x + grid_res, y + grid_res))
+                    
+                    grid_gdf = gpd.GeoDataFrame(grid_cells, columns=["geometry"], crs="EPSG:4326")
+                    grid_gdf["probability"] = 0.0  # Dummy values, will be replaced by cache
+                    return grid_gdf
+                
                 bounds = get_nicaragua_bounds()
                 grid_res = self.get_resolution()
                 print(f"High-res exposure grid bounds: {bounds}")
@@ -166,6 +186,11 @@ class LandslideExposureLayer(ExposureLayer):
         import rasterio
         
         probabilities = []
+        
+        # If landslide_file is "cached", skip raster reading since cache will be used
+        if self.landslide_file == "cached":
+            print("Using cached landslide data, skipping raster file reading")
+            return [0.0] * len(grid_gdf)  # Return zeros, cache will be loaded instead
         
         try:
             with rasterio.open(self.landslide_file) as src:
@@ -414,9 +439,13 @@ class LandslideExposureLayer(ExposureLayer):
         from pathlib import Path
         import re
         
-        filename = Path(self.landslide_file).name
-        match = re.search(r'(\d{8}T\d{4})', filename)
-        date_str = match.group(1) if match else 'unknown'
+        # Handle cached case
+        if self.landslide_file == "cached":
+            date_str = "20250716T0600"  # Use the date from the cache filename
+        else:
+            filename = Path(self.landslide_file).name
+            match = re.search(r'(\d{8}T\d{4})', filename)
+            date_str = match.group(1) if match else 'unknown'
         
         out_path = os.path.join(output_dir, f"landslide_exposure_{date_str}_{self.resampling_method}.png")
         os.makedirs(os.path.dirname(out_path), exist_ok=True)

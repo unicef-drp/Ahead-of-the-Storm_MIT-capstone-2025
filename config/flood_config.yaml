@@ -16,7 +16,7 @@ flood:
     h100: "nic_flood_CDRI_h100.tif"
     h500: "nic_flood_CDRI_h500.tif"
     h1000: "nic_flood_CDRI_h1000.tif"
-  discharge_file: "data/preprocessed/flood/nicaragua_discharge_20201117_felix.geojson"
+  discharge_file: "data/preprocessed/flood/nicaragua_discharge_20201117.geojson"
   output_directory: "data/preprocessed/flood"
 
 # Download settings for river discharge
@@ -38,6 +38,25 @@ model:
   depth_to_inundation_coeff: 1.5
   flood_threshold_cm: 25
   n_ensemble: 50
+
+# PLACEHOLDER: Ensemble generation parameters for synthetic flood variations
+# TODO: Replace with real ensemble forecast parameters when available
+ensemble_generation:
+  # Spatial range for ensemble variations (grid cells)
+  max_spatial_distance: 4  # Maximum distance in grid cells from original flooded areas
+  
+  # Probability settings for removing originally flooded cells
+  removal_probability: 0.3  # 30% chance of removing originally flooded cells
+  
+  # Probability settings for adding nearby cells (distance-based decay)
+  base_addition_probability: 0.2  # 20% chance for distance 1
+  probability_decay_factor: 0.5  # 50% reduction per distance step
+  
+  # Distance-based probabilities:
+  # Distance 1: 20% chance (base_addition_probability)
+  # Distance 2: 10% chance (base_addition_probability * probability_decay_factor)
+  # Distance 3: 5% chance (base_addition_probability * probability_decay_factor^2)
+  # Distance 4: 2.5% chance (base_addition_probability * probability_decay_factor^3)
 
 # Logging configuration
 logging:

@@ -139,6 +139,10 @@ env/
 *.shx
 *.sbn
 *.sbx
+*.shp.xml
+
+# XML files (metadata, configuration, etc.)
+*.xml
 
 # Allow tracking of data/preprocessed/weatherlab files
 !data/preprocessed/weatherlab/

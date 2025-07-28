@@ -1,3 +1,6 @@
+import os
+import glob
+
 from src.impact_analysis.layers.hurricane import HurricaneExposureLayer
 from src.impact_analysis.layers.landslide import LandslideExposureLayer
 from src.impact_analysis.layers.flood import FloodExposureLayer
@@ -21,7 +24,13 @@ from src.utils.config_utils import get_config_value
 
 
 def get_exposure_layer(
-    exposure_type, hurricane_df, forecast_time, config, cache_dir, resampling_method="mean", resolution_context=None
+    exposure_type,
+    hurricane_df,
+    forecast_time,
+    config,
+    cache_dir,
+    resampling_method="mean",
+    resolution_context=None,
 ):
     if exposure_type == "hurricane":
         return HurricaneExposureLayer(hurricane_df, forecast_time, config, cache_dir)
@@ -34,25 +43,45 @@ def get_exposure_layer(
             "data/preprocessed/flood/nicaragua_flood_extent_20201117.tif",
         )
         flood_raster_path = str(get_data_path(flood_raster_path))
+
         return FloodExposureLayer(
             flood_raster_path=flood_raster_path,
             config=config,
             cache_dir=cache_dir,
+            resampling_method=resampling_method,
         )
     if exposure_type == "landslide":
         # landslide_df is not used, instead config must specify the landslide file
         from src.utils.path_utils import get_data_path
         import re
 
-        # Find the latest landslide file
-        landslide_dir = get_data_path("data/preprocessed/landslide")
-        landslide_files = list(
-            landslide_dir.glob("landslide_forecast_48h_*_nicaragua.tif")
+        # Check if cached landslide exposure exists first
+        cache_dir = cache_dir or get_config_value(
+            config,
+            "impact_analysis.output.cache_directory",
+            "data/results/impact_analysis/cache/",
         )
-        if not landslide_files:
-            raise FileNotFoundError("No landslide data files found!")
-        # Use the most recent file
-        landslide_file = str(max(landslide_files, key=lambda x: x.stat().st_mtime))
+        
+        # Check for existing cache files
+        cache_pattern = os.path.join(cache_dir, "landslide_exposure_*")
+        existing_cache = glob.glob(cache_pattern)
+        
+        if existing_cache:
+            # Use cached data - provide a dummy file path since caching will handle it
+            print(f"Found {len(existing_cache)} cached landslide exposure files, using cached data")
+            landslide_file = "cached"  # Dummy path since cache will be used
+        else:
+            # Find the latest landslide file only if no cache exists
+            landslide_dir = get_data_path("data/preprocessed/landslide")
+            landslide_files = list(
+                landslide_dir.glob("landslide_forecast_48h_*_nicaragua.tif")
+            )
+            if not landslide_files:
+                raise FileNotFoundError("No landslide data files found!")
+            # Use the most recent file
+            landslide_file = str(max(landslide_files, key=lambda x: x.stat().st_mtime))
+            print(f"Using landslide file: {landslide_file}")
+            
         return LandslideExposureLayer(
             landslide_file=landslide_file,
             config=config,
@@ -65,48 +94,88 @@ def get_exposure_layer(
 
 def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=None):
     if vuln_type == "schools":
-        return SchoolVulnerabilityLayer(config, cache_dir=cache_dir, resolution_context=resolution_context)
+        return SchoolVulnerabilityLayer(
+            config, cache_dir=cache_dir, resolution_context=resolution_context
+        )
     if vuln_type == "school_population":
-        return SchoolPopulationVulnerabilityLayer(config, cache_dir=cache_dir, resolution_context=resolution_context)
+        return SchoolPopulationVulnerabilityLayer(
+            config, cache_dir=cache_dir, resolution_context=resolution_context
+        )
     if vuln_type == "health_facilities":
         return HealthFacilityVulnerabilityLayer(
-            config, weighted_by_population=False, cache_dir=cache_dir, resolution_context=resolution_context
+            config,
+            weighted_by_population=False,
+            cache_dir=cache_dir,
+            resolution_context=resolution_context,
         )
     if vuln_type == "health_facilities_population":
         return HealthFacilityVulnerabilityLayer(
-            config, weighted_by_population=True, cache_dir=cache_dir, resolution_context=resolution_context
+            config,
+            weighted_by_population=True,
+            cache_dir=cache_dir,
+            resolution_context=resolution_context,
         )
     if vuln_type == "shelters":
         return ShelterVulnerabilityLayer(
-            config, weighted_by_capacity=False, cache_dir=cache_dir, resolution_context=resolution_context
+            config,
+            weighted_by_capacity=False,
+            cache_dir=cache_dir,
+            resolution_context=resolution_context,
         )
     if vuln_type == "shelters_population":
         return ShelterVulnerabilityLayer(
-            config, weighted_by_capacity=True, cache_dir=cache_dir, resolution_context=resolution_context
+            config,
+            weighted_by_capacity=True,
+            cache_dir=cache_dir,
+            resolution_context=resolution_context,
         )
     if vuln_type == "population":
         return PopulationVulnerabilityLayer(
-            config, age_groups=list(range(0, 85, 5)), gender="both", cache_dir=cache_dir, resolution_context=resolution_context
+            config,
+            age_groups=list(range(0, 85, 5)),
+            gender="both",
+            cache_dir=cache_dir,
+            resolution_context=resolution_context,
         )
     if vuln_type == "children":
         return PopulationVulnerabilityLayer(
-            config, age_groups=[0, 5, 10, 15], gender="both", cache_dir=cache_dir, resolution_context=resolution_context
+            config,
+            age_groups=[0, 5, 10, 15],
+            gender="both",
+            cache_dir=cache_dir,
+            resolution_context=resolution_context,
         )
     if vuln_type == "poverty":
         return PovertyVulnerabilityLayer(
-            config, age_groups=list(range(0, 85, 5)), gender="both", cache_dir=cache_dir, resolution_context=resolution_context
+            config,
+            age_groups=list(range(0, 85, 5)),
+            gender="both",
+            cache_dir=cache_dir,
+            resolution_context=resolution_context,
         )
     if vuln_type == "poverty_children":
         return PovertyVulnerabilityLayer(
-            config, age_groups=[0, 5, 10, 15], gender="both", cache_dir=cache_dir, resolution_context=resolution_context
+            config,
+            age_groups=[0, 5, 10, 15],
+            gender="both",
+            cache_dir=cache_dir,
+            resolution_context=resolution_context,
         )
     if vuln_type == "severe_poverty":
         return SeverePovertyVulnerabilityLayer(
-            config, age_groups=list(range(0, 85, 5)), gender="both", cache_dir=cache_dir, resolution_context=resolution_context
+            config,
+            age_groups=list(range(0, 85, 5)),
+            gender="both",
+            cache_dir=cache_dir,
+            resolution_context=resolution_context,
         )
     if vuln_type == "severe_poverty_children":
         return SeverePovertyVulnerabilityLayer(
-            config, age_groups=[0, 5, 10, 15], gender="both", cache_dir=cache_dir, resolution_context=resolution_context
+            config,
+            age_groups=[0, 5, 10, 15],
+            gender="both",
+            cache_dir=cache_dir,
+            resolution_context=resolution_context,
         )
     raise ValueError(f"Unknown vulnerability type: {vuln_type}")
 
