@@ -34,10 +34,12 @@ def get_exposure_layer(
             "data/preprocessed/flood/nicaragua_flood_extent_20201117.tif",
         )
         flood_raster_path = str(get_data_path(flood_raster_path))
+
         return FloodExposureLayer(
             flood_raster_path=flood_raster_path,
             config=config,
             cache_dir=cache_dir,
+            scenario=scenario,
         )
     if exposure_type == "landslide":
         # landslide_df is not used, instead config must specify the landslide file

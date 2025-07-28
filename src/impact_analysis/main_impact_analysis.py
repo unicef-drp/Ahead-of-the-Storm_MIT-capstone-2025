@@ -49,6 +49,12 @@ def run_analysis(
     # Run and plot all layers
     print(f"\n[Exposure Layer: {exposure_type} ({scenario})]")
     exposure.plot(output_dir=output_subdir)
+
+    # For flood, also plot the baseline
+    if exposure_type == "flood":
+        print(f"\n[Baseline Flood Extent]")
+        exposure.plot_baseline(output_dir=output_subdir)
+
     print(f"\n[Vulnerability Layer: {vuln_type}]")
     vulnerability.plot(output_dir=output_subdir)
     print(f"\n[Impact Layer: {exposure_type} x {vuln_type} ({scenario})]")
@@ -242,6 +248,8 @@ def main():
                 print(
                     f"\n=== Running analysis: Exposure={exposure_type}, Vulnerability={vuln_type} ==="
                 )
+                # For flood, use ensemble variations scenario to see the synthetic 50 different members
+                scenario = "ensemble" if exposure_type == "flood" else "mean"
                 run_analysis(
                     config,
                     exposure_type,
@@ -250,6 +258,7 @@ def main():
                     chosen_forecast,
                     output_dir,
                     cache_dir,
+                    scenario=scenario,
                 )
     print(f"\nImpact analysis complete! Results saved to: {output_dir}")
 
