@@ -87,7 +87,7 @@ def main(config_path="config/flood_config.yaml"):
     )
     # Save result
     os.makedirs(output_dir, exist_ok=True)
-    out_path = os.path.join(output_dir, "test_flood_extent.tif")
+    out_path = os.path.join(output_dir, "nicaragua_flood_extent_20201117.tif")
     print(f"[Flood] Saving flood extent raster to {out_path} ...")
     import rasterio
 
