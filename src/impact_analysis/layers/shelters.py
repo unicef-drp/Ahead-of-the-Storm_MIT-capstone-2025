@@ -10,8 +10,8 @@ from src.utils.hurricane_geom import get_nicaragua_boundary
 
 
 class ShelterVulnerabilityLayer(VulnerabilityLayer):
-    def __init__(self, config, weighted_by_capacity=False, cache_dir=None):
-        super().__init__(config)
+    def __init__(self, config, weighted_by_capacity=False, cache_dir=None, resolution_context=None):
+        super().__init__(config, resolution_context)
         self.weighted_by_capacity = weighted_by_capacity
         self.grid_gdf = None
         self._shelter_grid = None
@@ -24,7 +24,15 @@ class ShelterVulnerabilityLayer(VulnerabilityLayer):
 
     def _cache_path(self):
         suffix = "capacity" if self.weighted_by_capacity else "count"
-        return os.path.join(self.cache_dir, f"shelter_vulnerability_{suffix}.gpkg")
+        resolution = self.get_resolution()
+        if self.resolution_context:
+            # Use parquet for high-res computation, gpkg for visualization
+            if self.resolution_context == "landslide_computation":
+                return os.path.join(self.cache_dir, f"shelter_vulnerability_{suffix}_{self.resolution_context}_{resolution}deg.parquet")
+            else:
+                return os.path.join(self.cache_dir, f"shelter_vulnerability_{suffix}_{self.resolution_context}_{resolution}deg.gpkg")
+        else:
+            return os.path.join(self.cache_dir, f"shelter_vulnerability_{suffix}.gpkg")
 
     def compute_grid(self):
         if self.grid_gdf is not None:
@@ -33,20 +41,36 @@ class ShelterVulnerabilityLayer(VulnerabilityLayer):
         value_column = self.value_column
 
         def compute_func():
-            grid_res = get_config_value(
-                self.config, "impact_analysis.grid.resolution_degrees", 0.1
-            )
-            nicaragua_gdf = get_nicaragua_boundary()
-            minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
-            grid_cells = []
-            x_coords = np.arange(minx, maxx, grid_res)
-            y_coords = np.arange(miny, maxy, grid_res)
-            for x in x_coords:
-                for y in y_coords:
-                    grid_cells.append(box(x, y, x + grid_res, y + grid_res))
-            grid_gdf = gpd.GeoDataFrame(
-                grid_cells, columns=["geometry"], crs="EPSG:4326"
-            )
+            if self.resolution_context == "landslide_computation":
+                from src.impact_analysis.helper.raster_grid import get_nicaragua_bounds
+                
+                # Use the same bounds as the exposure layer to ensure grid compatibility
+                bounds = get_nicaragua_bounds()
+                grid_res = self.get_resolution()
+                grid_cells = []
+                x_coords = np.arange(bounds[0], bounds[2], grid_res)
+                y_coords = np.arange(bounds[1], bounds[3], grid_res)
+                for x in x_coords:
+                    for y in y_coords:
+                        grid_cells.append(box(x, y, x + grid_res, y + grid_res))
+                grid_gdf = gpd.GeoDataFrame(
+                    grid_cells, columns=["geometry"], crs="EPSG:4326"
+                )
+            else:
+                grid_res = get_config_value(
+                    self.config, "impact_analysis.grid.resolution_degrees", 0.1
+                )
+                nicaragua_gdf = get_nicaragua_boundary()
+                minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
+                grid_cells = []
+                x_coords = np.arange(minx, maxx, grid_res)
+                y_coords = np.arange(miny, maxy, grid_res)
+                for x in x_coords:
+                    for y in y_coords:
+                        grid_cells.append(box(x, y, x + grid_res, y + grid_res))
+                grid_gdf = gpd.GeoDataFrame(
+                    grid_cells, columns=["geometry"], crs="EPSG:4326"
+                )
             # Load shelters
             shelter_data_path = get_config_value(
                 self.config,
