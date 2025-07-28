@@ -39,14 +39,14 @@ class FloodExposureLayer(ExposureLayer):
         threshold_m=1,
         n_ensemble=50,
         min_flooded_pixels_percent=10,
-        scenario="mean",
+        resampling_method="mean",
     ):
         super().__init__(config)
         self.flood_raster_path = flood_raster_path
         self.threshold_m = threshold_m
         self.n_ensemble = n_ensemble
         self.min_flooded_pixels_percent = min_flooded_pixels_percent
-        self.scenario = scenario
+        self.resampling_method = resampling_method
         self.grid_gdf = None
         self._prob_grid = None
         self._member_regions = None
@@ -296,7 +296,7 @@ class FloodExposureLayer(ExposureLayer):
 
         # Create ensemble variations (PLACEHOLDER implementation)
         base_flooded_cells = np.array(flooded_counts)
-        if self.scenario == "deterministic":
+        if self.resampling_method == "deterministic":
             ensemble_members = self._create_deterministic_ensemble(base_flooded_cells)
         else:
             ensemble_members = self._create_ensemble_variations(
