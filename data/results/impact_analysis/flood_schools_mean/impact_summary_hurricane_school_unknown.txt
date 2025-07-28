@@ -3,6 +3,6 @@ Forecast time: unknown
 Vulnerability type: school
 
 Results:
-Expected affected: 88.00
-Best case (min): 769.00 (ensemble member 0)
-Worst case (max): 769.00 (ensemble member 0)
+Expected affected: 82.20
+Best case (min): 663.00 (ensemble member 32)
+Worst case (max): 809.00 (ensemble member 31)
