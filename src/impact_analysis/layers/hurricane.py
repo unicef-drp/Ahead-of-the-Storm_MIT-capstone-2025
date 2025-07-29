@@ -2,6 +2,7 @@ import os
 import numpy as np
 import geopandas as gpd
 import matplotlib.pyplot as plt
+from typing import Dict, Any
 from shapely.geometry import box, LineString
 from src.impact_analysis.layers.base import ExposureLayer
 from src.utils.hurricane_geom import (
@@ -32,7 +33,8 @@ class HurricaneExposureLayer(ExposureLayer):
 
     def _cache_path(self):
         date_str = str(self.chosen_forecast).replace(":", "-").replace(" ", "_")
-        return os.path.join(self.cache_dir, f"hurricane_exposure_{date_str}.gpkg")
+        wind_threshold = get_config_value(self.config, "impact_analysis.hurricane.wind_threshold.speed_knots", 50)
+        return os.path.join(self.cache_dir, f"hurricane_exposure_{wind_threshold}kt_{date_str}.gpkg")
 
     def _compute_member_regions(self):
         df_ens = self.hurricane_df[
@@ -56,10 +58,12 @@ class HurricaneExposureLayer(ExposureLayer):
             for _, row in member_data.iterrows():
                 lat = row["latitude"]
                 lon = row["longitude"]
-                r_ne = row.get("radius_50_knot_winds_ne_km", 0) or 0
-                r_se = row.get("radius_50_knot_winds_se_km", 0) or 0
-                r_sw = row.get("radius_50_knot_winds_sw_km", 0) or 0
-                r_nw = row.get("radius_50_knot_winds_nw_km", 0) or 0
+                # Get configurable wind threshold
+                wind_suffix = get_config_value(self.config, "impact_analysis.hurricane.wind_threshold.column_suffix", "50_knot")
+                r_ne = row.get(f"radius_{wind_suffix}_winds_ne_km", 0) or 0
+                r_se = row.get(f"radius_{wind_suffix}_winds_se_km", 0) or 0
+                r_sw = row.get(f"radius_{wind_suffix}_winds_sw_km", 0) or 0
+                r_nw = row.get(f"radius_{wind_suffix}_winds_nw_km", 0) or 0
                 if any([r_ne, r_se, r_sw, r_nw]):
                     poly = wind_quadrant_polygon(lat, lon, r_ne, r_se, r_sw, r_nw)
                     if poly is not None and poly.is_valid and not poly.is_empty:
@@ -120,33 +124,25 @@ class HurricaneExposureLayer(ExposureLayer):
         print(f"Saved hurricane exposure layer to cache: {cache_path}")
         return grid_gdf
 
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this hurricane exposure layer."""
+        return {
+            "layer_type": "exposure",
+            "hazard_type": "Hurricane",
+            "data_column": "probability",
+            "colormap": "YlOrRd",
+            "title_template": "Probability of Forecasted Hurricane",
+            "legend_template": "Hurricane Probability per Cell",
+            "filename_template": "hurricane_exposure_{parameters}",
+            "special_features": ["forecast_time"]
+        }
+
     def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
-        grid_gdf = self.compute_grid()
-        nicaragua_gdf = get_nicaragua_boundary()
-        fig = None
-        if ax is None:
-            fig, ax = plt.subplots(figsize=(12, 10))
-        grid_gdf.plot(
-            ax=ax,
-            column="probability",
-            cmap="YlOrRd",
-            linewidth=0.1,
-            edgecolor="grey",
-            alpha=0.7,
-            legend=True,
-            legend_kwds={"label": "Wind Region Probability per Cell"},
-        )
-        nicaragua_gdf.plot(
-            ax=ax, color="none", edgecolor="black", linewidth=3, alpha=1.0
-        )
-        ax.set_title("Hurricane Wind Region Exposure Probability Heatmap")
-        plt.tight_layout()
-        # Save to disk
-        date_str = str(self.chosen_forecast).replace(":", "-").replace(" ", "_")
-        out_path = os.path.join(output_dir, f"hurricane_exposure_{date_str}.png")
-        plt.savefig(out_path, dpi=300, bbox_inches="tight")
-        print(f"Saved hurricane exposure plot: {out_path}")
-        plt.close(fig)
+        """Plot the hurricane exposure layer using universal plotting function."""
+        from src.impact_analysis.utils.plotting_utils import plot_layer_with_scales
+        
+        # Use universal plotting function
+        plot_layer_with_scales(self, output_dir=output_dir)
 
     def get_grid_cells(self):
         """Return the grid GeoDataFrame (geometry only, no data columns)."""

@@ -1,6 +1,7 @@
 import numpy as np
 import geopandas as gpd # type: ignore
 import matplotlib.pyplot as plt # type: ignore
+from typing import Dict, Any
 from shapely.geometry import box
 from src.impact_analysis.layers.base import VulnerabilityLayer
 from src.utils.config_utils import get_config_value
@@ -111,20 +112,25 @@ class SchoolVulnerabilityLayer(VulnerabilityLayer):
             grid_cells, columns=["geometry"], crs="EPSG:4326"
         )
 
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this school vulnerability layer."""
+        return {
+            "layer_type": "vulnerability",
+            "vulnerability_type": "Schools",
+            "data_column": "school_count",
+            "colormap": "GnBu",
+            "title_template": "Concentration of Schools",
+            "legend_template": "Schools per Cell",
+            "filename_template": "schools_vulnerability_{parameters}",
+            "special_features": []
+        }
+
     def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
-        grid_gdf = self.compute_grid()
-        output_filename = "school_vulnerability.png"
-        plot_title = "School Vulnerability Heatmap (Log Scale)"
-        self._plot_vulnerability_grid(
-            grid_gdf,
-            value_column="school_count",
-            cmap="Blues",
-            legend_label="Log10(Schools + 1) per Cell",
-            output_dir=output_dir,
-            output_filename=output_filename,
-            plot_title=plot_title,
-            ax=ax,
-        )
+        """Plot the school vulnerability layer using universal plotting function."""
+        from src.impact_analysis.utils.plotting_utils import plot_layer_with_scales
+        
+        # Use universal plotting function
+        plot_layer_with_scales(self, output_dir=output_dir)
 
     @property
     def value_column(self):
@@ -203,20 +209,25 @@ class SchoolPopulationVulnerabilityLayer(VulnerabilityLayer):
         self._people_grid = self.grid_gdf["people_count"].values
         return self.grid_gdf
 
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this school population vulnerability layer."""
+        return {
+            "layer_type": "vulnerability",
+            "vulnerability_type": "School Population",
+            "data_column": "people_count",
+            "colormap": "GnBu",
+            "title_template": "Concentration of School Population",
+            "legend_template": "School Population per Cell",
+            "filename_template": "school_population_vulnerability_{parameters}",
+            "special_features": []
+        }
+
     def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
-        grid_gdf = self.compute_grid()
-        output_filename = "school_population_vulnerability.png"
-        plot_title = "School Population Vulnerability Heatmap (Log Scale)"
-        self._plot_vulnerability_grid(
-            grid_gdf,
-            value_column="people_count",
-            cmap="Oranges",
-            legend_label="Log10(People + 1) per Cell",
-            output_dir=output_dir,
-            output_filename=output_filename,
-            plot_title=plot_title,
-            ax=ax,
-        )
+        """Plot the school population vulnerability layer using universal plotting function."""
+        from src.impact_analysis.utils.plotting_utils import plot_layer_with_scales
+        
+        # Use universal plotting function
+        plot_layer_with_scales(self, output_dir=output_dir)
 
     @property
     def value_column(self):

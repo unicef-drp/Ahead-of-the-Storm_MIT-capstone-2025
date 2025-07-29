@@ -1,0 +1,10 @@
+Impact summary for flood_poverty_both_ages_0_5_10_15_20_25_30_35_40_45_50_55_60_65_70_75_80_unknown
+Forecast time: unknown
+Vulnerability type: poverty
+Age groups: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
+Gender: both
+
+Results:
+Expected affected: 163559.52
+Best case (min): 123683.64 (ensemble member 2)
+Worst case (max): 220850.93 (ensemble member 1)

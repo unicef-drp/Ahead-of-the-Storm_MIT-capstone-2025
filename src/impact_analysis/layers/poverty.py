@@ -2,6 +2,7 @@ import os
 import numpy as np
 import geopandas as gpd
 from shapely.geometry import box
+from typing import Dict, Any
 from src.impact_analysis.layers.base import VulnerabilityLayer
 from src.impact_analysis.layers.population import PopulationVulnerabilityLayer
 from src.utils.config_utils import get_config_value
@@ -159,7 +160,12 @@ class PovertyVulnerabilityLayer(VulnerabilityLayer):
             )
             
             # Use efficient spatial join between population grid and regions
-            joined_gdf = gpd.sjoin(pop_gdf, regions_gdf, how="left", predicate="within")
+            # Use 'intersects' instead of 'within' to capture small regions like Masaya
+            joined_gdf = gpd.sjoin(pop_gdf, regions_gdf, how="left", predicate="intersects")
+            
+            # For each grid cell, keep only the first region assignment (most likely the primary one)
+            # This prevents double-counting when grid cells intersect multiple regions
+            joined_gdf = joined_gdf.drop_duplicates(subset='geometry', keep='first')
             
             # Vectorized poverty calculation: population * poverty_rate
             # Initialize poverty counts
@@ -173,12 +179,8 @@ class PovertyVulnerabilityLayer(VulnerabilityLayer):
             other_mask = (joined_gdf["region_norm"] != "lago nicaragua") & (~joined_gdf["region_norm"].isna())
             joined_gdf.loc[other_mask, "poverty_count"] = joined_gdf.loc[other_mask, "population_count"] * (joined_gdf.loc[other_mask, "H"] / 100.0)
             
-            # Group by original grid cell and sum poverty counts (in case of multiple regions)
-            result_gdf = joined_gdf.groupby(joined_gdf.index).agg({
-                "geometry": "first",
-                "population_count": "first",
-                "poverty_count": "sum"
-            }).reset_index(drop=True)
+            # Create final result (no need to group since we already deduplicated)
+            result_gdf = joined_gdf[["geometry", "population_count", "poverty_count"]].copy()
             
             # Ensure we have a clean GeoDataFrame
             final_gdf = gpd.GeoDataFrame({
@@ -210,6 +212,32 @@ class PovertyVulnerabilityLayer(VulnerabilityLayer):
             plot_title=plot_title,
             ax=ax,
         )
+
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this poverty vulnerability layer."""
+        # Determine if this is children or total population
+        if self.age_groups == [0, 5, 10, 15]:
+            vulnerability_type = "Children in Poverty"
+            colormap = "BuPu"
+        else:
+            vulnerability_type = "People in Poverty"
+            colormap = "BuPu"
+        
+        return {
+            "layer_type": "vulnerability",
+            "vulnerability_type": vulnerability_type,
+            "data_column": "poverty_count",
+            "colormap": colormap,
+            "title_template": "Concentration of {vulnerability_type}",
+            "legend_template": "{vulnerability_type} per Cell",
+            "filename_template": "{vulnerability_type}_vulnerability_{parameters}",
+            "special_features": []
+        }
+
+    def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
+        """Plot the poverty vulnerability layer using universal plotting function."""
+        from src.impact_analysis.utils.plotting_utils import plot_layer_with_scales
+        plot_layer_with_scales(self, output_dir=output_dir)
 
     @property
     def value_column(self):
@@ -282,7 +310,12 @@ class SeverePovertyVulnerabilityLayer(VulnerabilityLayer):
             )
             
             # Use efficient spatial join between population grid and regions
-            joined_gdf = gpd.sjoin(pop_gdf, regions_gdf, how="left", predicate="within")
+            # Use 'intersects' instead of 'within' to capture small regions like Masaya
+            joined_gdf = gpd.sjoin(pop_gdf, regions_gdf, how="left", predicate="intersects")
+            
+            # For each grid cell, keep only the first region assignment (most likely the primary one)
+            # This prevents double-counting when grid cells intersect multiple regions
+            joined_gdf = joined_gdf.drop_duplicates(subset='geometry', keep='first')
             
             # Vectorized severe poverty calculation: population * severe_poverty_rate
             # Initialize severe poverty counts
@@ -296,12 +329,8 @@ class SeverePovertyVulnerabilityLayer(VulnerabilityLayer):
             other_mask = (joined_gdf["region_norm"] != "lago nicaragua") & (~joined_gdf["region_norm"].isna())
             joined_gdf.loc[other_mask, "severepoverty_count"] = joined_gdf.loc[other_mask, "population_count"] * (joined_gdf.loc[other_mask, "Severe_Poverty"] / 100.0)
             
-            # Group by original grid cell and sum severe poverty counts (in case of multiple regions)
-            result_gdf = joined_gdf.groupby(joined_gdf.index).agg({
-                "geometry": "first",
-                "population_count": "first",
-                "severepoverty_count": "sum"
-            }).reset_index(drop=True)
+            # Create final result (no need to group since we already deduplicated)
+            result_gdf = joined_gdf[["geometry", "population_count", "severepoverty_count"]].copy()
             
             # Ensure we have a clean GeoDataFrame
             final_gdf = gpd.GeoDataFrame({
@@ -318,21 +347,31 @@ class SeverePovertyVulnerabilityLayer(VulnerabilityLayer):
         self._severe_poverty_grid = self.grid_gdf["severepoverty_count"].values
         return self.grid_gdf
 
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this severe poverty vulnerability layer."""
+        # Determine if this is children or total population
+        if self.age_groups == [0, 5, 10, 15]:
+            vulnerability_type = "Children in Severe Poverty"
+            colormap = "Purples"
+        else:
+            vulnerability_type = "People in Severe Poverty"
+            colormap = "Purples"
+        
+        return {
+            "layer_type": "vulnerability",
+            "vulnerability_type": vulnerability_type,
+            "data_column": "severepoverty_count",
+            "colormap": colormap,
+            "title_template": "Concentration of {vulnerability_type}",
+            "legend_template": "{vulnerability_type} per Cell",
+            "filename_template": "{vulnerability_type}_vulnerability_{parameters}",
+            "special_features": []
+        }
+
     def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
-        grid_gdf = self.compute_grid()
-        age_str = "_".join(map(str, self.age_groups))
-        output_filename = f"severe_poverty_vulnerability_{self.gender}_ages_{age_str}.png"
-        plot_title = f"People in Severe Poverty Vulnerability Heatmap (Log Scale)\nGender: {self.gender}, Ages: {self.age_groups}"
-        self._plot_vulnerability_grid(
-            grid_gdf,
-            value_column="severepoverty_count",
-            cmap="Reds",
-            legend_label="Log10(People in Severe Poverty + 1) per Cell",
-            output_dir=output_dir,
-            output_filename=output_filename,
-            plot_title=plot_title,
-            ax=ax,
-        )
+        """Plot the severe poverty vulnerability layer using universal plotting function."""
+        from src.impact_analysis.utils.plotting_utils import plot_layer_with_scales
+        plot_layer_with_scales(self, output_dir=output_dir)
 
     @property
     def value_column(self):

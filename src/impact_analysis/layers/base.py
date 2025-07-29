@@ -1,6 +1,7 @@
 import abc
 import numpy as np
 import geopandas as gpd
+from typing import Dict, Any, Tuple
 from src.utils.config_utils import get_config_value
 
 
@@ -21,6 +22,16 @@ class ExposureLayer(abc.ABC):
         """Plot the exposure layer."""
         pass
 
+    @abc.abstractmethod
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this exposure layer."""
+        pass
+
+    def get_plot_data(self) -> Tuple[str, np.ndarray]:
+        """Return data column name and values for plotting."""
+        grid_gdf = self.compute_grid()
+        return "probability", grid_gdf["probability"].values
+
 
 class VulnerabilityLayer(abc.ABC):
     """Abstract base class for vulnerability layers (e.g., schools, hospitals, population)."""
@@ -38,6 +49,17 @@ class VulnerabilityLayer(abc.ABC):
     def plot(self, ax=None):
         """Plot the vulnerability layer."""
         pass
+
+    @abc.abstractmethod
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this vulnerability layer."""
+        pass
+
+    def get_plot_data(self) -> Tuple[str, np.ndarray]:
+        """Return data column name and values for plotting."""
+        grid_gdf = self.compute_grid()
+        value_col = getattr(self, "value_column", "school_count")
+        return value_col, grid_gdf[value_col].values
 
     def get_visualization_grid(self):
         """Get the vulnerability grid at visualization resolution."""
@@ -99,47 +121,7 @@ class VulnerabilityLayer(abc.ABC):
         print(f"Saved vulnerability layer to cache: {cache_path}")
         return grid_gdf
 
-    def _plot_vulnerability_grid(
-        self,
-        grid_gdf,
-        value_column,
-        cmap,
-        legend_label,
-        output_dir,
-        output_filename,
-        plot_title,
-        ax=None,
-    ):
-        import matplotlib.pyplot as plt
-        from src.utils.hurricane_geom import get_nicaragua_boundary
-        import os
 
-        nicaragua_gdf = get_nicaragua_boundary()
-        fig = None
-        if ax is None:
-            fig, ax = plt.subplots(figsize=(12, 10))
-        log_col = f"log_{value_column}"
-        grid_gdf[log_col] = [np.log10(val + 1) for val in grid_gdf[value_column]]
-        grid_gdf.plot(
-            ax=ax,
-            column=log_col,
-            cmap=cmap,
-            linewidth=0.1,
-            edgecolor="grey",
-            alpha=0.7,
-            legend=True,
-            legend_kwds={"label": legend_label},
-        )
-        nicaragua_gdf.plot(
-            ax=ax, color="none", edgecolor="black", linewidth=3, alpha=1.0
-        )
-        ax.set_title(plot_title)
-        plt.tight_layout()
-        out_path = os.path.join(output_dir, output_filename)
-        os.makedirs(os.path.dirname(out_path), exist_ok=True)
-        plt.savefig(out_path, dpi=300, bbox_inches="tight")
-        print(f"Saved vulnerability plot: {out_path}")
-        plt.close(fig)
 
 
 class ImpactLayer(abc.ABC):
@@ -164,6 +146,16 @@ class ImpactLayer(abc.ABC):
     def plot(self, ax=None):
         """Plot the impact layer."""
         pass
+
+    @abc.abstractmethod
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this impact layer."""
+        pass
+
+    def get_plot_data(self) -> Tuple[str, np.ndarray]:
+        """Return data column name and values for plotting."""
+        impact_gdf = self.compute_impact()
+        return "expected_impact", impact_gdf["expected_impact"].values
 
     @abc.abstractmethod
     def expected_impact(self) -> float:

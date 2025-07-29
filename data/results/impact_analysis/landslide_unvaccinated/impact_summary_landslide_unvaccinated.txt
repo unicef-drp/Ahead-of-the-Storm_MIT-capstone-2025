@@ -1,0 +1,19 @@
+Landslide Impact Analysis Summary
+==================================================
+
+Vulnerability Type: unvaccinated
+Exposure Method: Ensemble (mean probability with spatial correlation)
+
+Ensemble Statistics (50 members):
+  Expected Impact (mean probability): 8204.47
+  Best Case (ensemble minimum): 2534.14
+  Worst Case (ensemble maximum): 17918.25
+  Ensemble Mean: 7496.54
+  Ensemble Median: 6892.33
+  Ensemble Std Dev: 3067.37
+
+Ensemble Distribution:
+  2534.14 (min) - 17918.25 (max)
+  7496.54 ± 3067.37 (mean ± std)
+
+Analysis completed with spatial correlation and ensemble sampling.

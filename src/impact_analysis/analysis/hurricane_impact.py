@@ -1,6 +1,7 @@
 import numpy as np
 import geopandas as gpd
 import matplotlib.pyplot as plt
+from typing import Dict, Any
 from src.impact_analysis.layers.base import ImpactLayer
 from src.utils.hurricane_geom import get_nicaragua_boundary
 import os
@@ -10,6 +11,73 @@ class HurricaneImpactLayer(ImpactLayer):
     def __init__(self, exposure_layer, vulnerability_layer, config):
         super().__init__(exposure_layer, vulnerability_layer, config)
         self.impact_gdf = None
+
+    def _get_vulnerability_name(self):
+        """Get vulnerability name for factory function."""
+        class_name = self.vulnerability_layer.__class__.__name__
+        # Map class names to factory names
+        name_mapping = {
+            "SchoolVulnerabilityLayer": "Schools",
+            "SchoolPopulationVulnerabilityLayer": "School Population",
+            "PopulationVulnerabilityLayer": "Population",
+            "PovertyVulnerabilityLayer": "People in Poverty",
+            "SeverePovertyVulnerabilityLayer": "People in Severe Poverty",
+            "UnvaccinatedVulnerabilityLayer": "Unvaccinated Population",
+            "ShelterVulnerabilityLayer": "Shelters",
+            "HealthFacilityVulnerabilityLayer": "Health Facilities"
+        }
+        
+        # Special handling for HealthFacilityVulnerabilityLayer
+        if class_name == "HealthFacilityVulnerabilityLayer":
+            if hasattr(self.vulnerability_layer, 'weighted_by_population') and self.vulnerability_layer.weighted_by_population:
+                return "Health Facility Population"
+            else:
+                return "Health Facilities"
+        
+        # Special handling for ShelterVulnerabilityLayer
+        if class_name == "ShelterVulnerabilityLayer":
+            if hasattr(self.vulnerability_layer, 'weighted_by_capacity') and self.vulnerability_layer.weighted_by_capacity:
+                return "Shelter Population"
+            else:
+                return "Shelters"
+        
+        # Special handling for PopulationVulnerabilityLayer
+        if class_name == "PopulationVulnerabilityLayer":
+            if hasattr(self.vulnerability_layer, 'age_groups'):
+                # Check if it's children (ages 0, 5, 10, 15) or total population
+                if self.vulnerability_layer.age_groups == [0, 5, 10, 15]:
+                    return "Children"
+                else:
+                    return "Population"
+        
+        # Special handling for PovertyVulnerabilityLayer
+        if class_name == "PovertyVulnerabilityLayer":
+            if hasattr(self.vulnerability_layer, 'age_groups'):
+                # Check if it's children (ages 0, 5, 10, 15) or total population
+                if self.vulnerability_layer.age_groups == [0, 5, 10, 15]:
+                    return "Children in Poverty"
+                else:
+                    return "People in Poverty"
+        
+        # Special handling for SeverePovertyVulnerabilityLayer
+        if class_name == "SeverePovertyVulnerabilityLayer":
+            if hasattr(self.vulnerability_layer, 'age_groups'):
+                # Check if it's children (ages 0, 5, 10, 15) or total population
+                if self.vulnerability_layer.age_groups == [0, 5, 10, 15]:
+                    return "Children in Severe Poverty"
+                else:
+                    return "People in Severe Poverty"
+        
+        # Special handling for UnvaccinatedVulnerabilityLayer
+        if class_name == "UnvaccinatedVulnerabilityLayer":
+            if hasattr(self.vulnerability_layer, 'age_groups'):
+                # Check if it's children (ages 0, 5, 10, 15) or total population
+                if self.vulnerability_layer.age_groups == [0, 5, 10, 15]:
+                    return "Unvaccinated Children"
+                else:
+                    return "Unvaccinated Population"
+        
+        return name_mapping.get(class_name, "Schools")
 
     def compute_impact(self):
         if self.impact_gdf is not None:
@@ -27,62 +95,30 @@ class HurricaneImpactLayer(ImpactLayer):
         self.impact_gdf = impact_gdf
         return impact_gdf
 
-    def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
-        impact_gdf = self.compute_impact()
-        nicaragua_gdf = get_nicaragua_boundary()
-        show_fig = False
-        if ax is None:
-            fig, ax = plt.subplots(figsize=(12, 10))
-            show_fig = True
-        # Ensure ax is a single Axes object
-        if isinstance(ax, (np.ndarray, list)):
-            ax = ax.flat[0]
-        impact_gdf.plot(
-            ax=ax,
-            column="expected_impact",
-            cmap="OrRd",
-            linewidth=0.1,
-            edgecolor="grey",
-            alpha=0.7,
-            legend=True,
-            legend_kwds={"label": "Expected Impact per Cell"},
-        )
-        if nicaragua_gdf is not None:
-            nicaragua_gdf.plot(
-                ax=ax, color="none", edgecolor="black", linewidth=3, alpha=1.0
-            )
-        # Add forecast time and vulnerability name to filename
-        forecast_time = getattr(self.exposure_layer, "chosen_forecast", "unknown")
-        if hasattr(self.vulnerability_layer, "__class__"):
-            vuln_name = (
-                self.vulnerability_layer.__class__.__name__.replace(
-                    "VulnerabilityLayer", ""
-                ).lower()
-                or "vulnerability"
-            )
-        else:
-            vuln_name = "vulnerability"
-        date_str = str(forecast_time).replace(":", "-").replace(" ", "_")
-        ax.set_title("Impact Heatmap (Expected Affected Entities)")
-        plt.tight_layout()
-        # Get vulnerability parameters for more detailed naming
-        vuln_params = ""
-        if hasattr(self.vulnerability_layer, "age_groups") and hasattr(
-            self.vulnerability_layer, "gender"
-        ):
-            age_str = "_".join(map(str, self.vulnerability_layer.age_groups))
-            vuln_params = f"_{self.vulnerability_layer.gender}_ages_{age_str}"
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this hurricane impact layer."""
+        vuln_name = self._get_vulnerability_name()
+        return {
+            "layer_type": "impact",
+            "hazard_type": "Hurricane",
+            "vulnerability_type": vuln_name,
+            "data_column": "expected_impact",
+            "colormap": "Reds",
+            "title_template": "Number of {vulnerability_type} to be Impacted by Forecasted {hazard_type}",
+            "legend_template": "Expected Impact per Cell",
+            "filename_template": "{hazard_type}_impact_{vulnerability_type}_{parameters}",
+            "special_features": []
+        }
 
-        out_path = os.path.join(
-            output_dir, f"hurricane_impact_{vuln_name}{vuln_params}_{date_str}.png"
-        )
-        plt.savefig(out_path, dpi=300, bbox_inches="tight")
-        print(f"Saved hurricane impact plot: {out_path}")
-        plt.close(fig)
+    def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
+        """Plot the hurricane impact layer using universal plotting function."""
+        from src.impact_analysis.utils.plotting_utils import plot_layer_with_scales
+        plot_layer_with_scales(self, output_dir=output_dir)
 
     def expected_impact(self):
-        impact_gdf = self.compute_impact()
-        return impact_gdf["expected_impact"].sum()
+        # Use ensemble-based calculation (mean of individual member impacts)
+        impacts = self._per_member_impacts()
+        return np.mean(impacts) if impacts else 0.0
 
     def _per_member_impacts(self):
         grid_cells = self.exposure_layer.get_grid_cells()
@@ -205,16 +241,7 @@ class HurricaneImpactLayer(ImpactLayer):
                 minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
                 ax.set_xlim(minx, maxx)
                 ax.set_ylim(miny, maxy)
-            ax.annotate(
-                f"Affected {vuln_name}s: {affected_str}",
-                xy=(0.99, 0.01),
-                xycoords="axes fraction",
-                fontsize=14,
-                color="black",
-                ha="right",
-                va="bottom",
-                bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.7),
-            )
+
             ax.set_title(
                 f"{case.title()} Case Hurricane Wind Region Overlay with Vulnerability (Boxed)"
             )
