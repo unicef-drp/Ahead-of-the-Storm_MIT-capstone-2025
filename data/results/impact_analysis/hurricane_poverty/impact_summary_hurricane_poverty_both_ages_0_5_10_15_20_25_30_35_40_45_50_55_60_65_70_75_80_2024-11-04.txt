@@ -5,6 +5,6 @@ Age groups: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
 Gender: both
 
 Results:
-Expected affected: 123461.02
-Best case (min): 1649.02 (ensemble member 20.0)
-Worst case (max): 444011.66 (ensemble member 5.0)
+Expected affected: 80889.34
+Best case (min): 0.00 (ensemble member 18.0)
+Worst case (max): 500377.16 (ensemble member 27.0)

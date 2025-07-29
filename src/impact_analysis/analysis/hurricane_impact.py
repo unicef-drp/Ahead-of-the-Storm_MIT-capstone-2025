@@ -22,6 +22,7 @@ class HurricaneImpactLayer(ImpactLayer):
             "PopulationVulnerabilityLayer": "Population",
             "PovertyVulnerabilityLayer": "People in Poverty",
             "SeverePovertyVulnerabilityLayer": "People in Severe Poverty",
+            "UnvaccinatedVulnerabilityLayer": "Unvaccinated Population",
             "ShelterVulnerabilityLayer": "Shelters",
             "HealthFacilityVulnerabilityLayer": "Health Facilities"
         }
@@ -66,6 +67,15 @@ class HurricaneImpactLayer(ImpactLayer):
                     return "Children in Severe Poverty"
                 else:
                     return "People in Severe Poverty"
+        
+        # Special handling for UnvaccinatedVulnerabilityLayer
+        if class_name == "UnvaccinatedVulnerabilityLayer":
+            if hasattr(self.vulnerability_layer, 'age_groups'):
+                # Check if it's children (ages 0, 5, 10, 15) or total population
+                if self.vulnerability_layer.age_groups == [0, 5, 10, 15]:
+                    return "Unvaccinated Children"
+                else:
+                    return "Unvaccinated Population"
         
         return name_mapping.get(class_name, "Schools")
 

@@ -17,6 +17,7 @@ from src.impact_analysis.layers.poverty import (
     PovertyVulnerabilityLayer,
     SeverePovertyVulnerabilityLayer,
 )
+from src.impact_analysis.layers.vaccination import UnvaccinatedVulnerabilityLayer
 from src.impact_analysis.analysis.hurricane_impact import HurricaneImpactLayer
 from src.impact_analysis.analysis.landslide_impact import LandslideImpactLayer
 from src.impact_analysis.analysis.flood_impact import FloodImpactLayer
@@ -171,6 +172,22 @@ def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=Non
         )
     if vuln_type == "severe_poverty_children":
         return SeverePovertyVulnerabilityLayer(
+            config,
+            age_groups=[0, 5, 10, 15],
+            gender="both",
+            cache_dir=cache_dir,
+            resolution_context=resolution_context,
+        )
+    if vuln_type == "unvaccinated":
+        return UnvaccinatedVulnerabilityLayer(
+            config,
+            age_groups=list(range(0, 85, 5)),
+            gender="both",
+            cache_dir=cache_dir,
+            resolution_context=resolution_context,
+        )
+    if vuln_type == "unvaccinated_children":
+        return UnvaccinatedVulnerabilityLayer(
             config,
             age_groups=[0, 5, 10, 15],
             gender="both",

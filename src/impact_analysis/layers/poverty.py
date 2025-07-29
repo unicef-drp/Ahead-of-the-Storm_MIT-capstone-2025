@@ -160,7 +160,12 @@ class PovertyVulnerabilityLayer(VulnerabilityLayer):
             )
             
             # Use efficient spatial join between population grid and regions
-            joined_gdf = gpd.sjoin(pop_gdf, regions_gdf, how="left", predicate="within")
+            # Use 'intersects' instead of 'within' to capture small regions like Masaya
+            joined_gdf = gpd.sjoin(pop_gdf, regions_gdf, how="left", predicate="intersects")
+            
+            # For each grid cell, keep only the first region assignment (most likely the primary one)
+            # This prevents double-counting when grid cells intersect multiple regions
+            joined_gdf = joined_gdf.drop_duplicates(subset='geometry', keep='first')
             
             # Vectorized poverty calculation: population * poverty_rate
             # Initialize poverty counts
@@ -174,12 +179,8 @@ class PovertyVulnerabilityLayer(VulnerabilityLayer):
             other_mask = (joined_gdf["region_norm"] != "lago nicaragua") & (~joined_gdf["region_norm"].isna())
             joined_gdf.loc[other_mask, "poverty_count"] = joined_gdf.loc[other_mask, "population_count"] * (joined_gdf.loc[other_mask, "H"] / 100.0)
             
-            # Group by original grid cell and sum poverty counts (in case of multiple regions)
-            result_gdf = joined_gdf.groupby(joined_gdf.index).agg({
-                "geometry": "first",
-                "population_count": "first",
-                "poverty_count": "sum"
-            }).reset_index(drop=True)
+            # Create final result (no need to group since we already deduplicated)
+            result_gdf = joined_gdf[["geometry", "population_count", "poverty_count"]].copy()
             
             # Ensure we have a clean GeoDataFrame
             final_gdf = gpd.GeoDataFrame({
@@ -309,7 +310,12 @@ class SeverePovertyVulnerabilityLayer(VulnerabilityLayer):
             )
             
             # Use efficient spatial join between population grid and regions
-            joined_gdf = gpd.sjoin(pop_gdf, regions_gdf, how="left", predicate="within")
+            # Use 'intersects' instead of 'within' to capture small regions like Masaya
+            joined_gdf = gpd.sjoin(pop_gdf, regions_gdf, how="left", predicate="intersects")
+            
+            # For each grid cell, keep only the first region assignment (most likely the primary one)
+            # This prevents double-counting when grid cells intersect multiple regions
+            joined_gdf = joined_gdf.drop_duplicates(subset='geometry', keep='first')
             
             # Vectorized severe poverty calculation: population * severe_poverty_rate
             # Initialize severe poverty counts
@@ -323,12 +329,8 @@ class SeverePovertyVulnerabilityLayer(VulnerabilityLayer):
             other_mask = (joined_gdf["region_norm"] != "lago nicaragua") & (~joined_gdf["region_norm"].isna())
             joined_gdf.loc[other_mask, "severepoverty_count"] = joined_gdf.loc[other_mask, "population_count"] * (joined_gdf.loc[other_mask, "Severe_Poverty"] / 100.0)
             
-            # Group by original grid cell and sum severe poverty counts (in case of multiple regions)
-            result_gdf = joined_gdf.groupby(joined_gdf.index).agg({
-                "geometry": "first",
-                "population_count": "first",
-                "severepoverty_count": "sum"
-            }).reset_index(drop=True)
+            # Create final result (no need to group since we already deduplicated)
+            result_gdf = joined_gdf[["geometry", "population_count", "severepoverty_count"]].copy()
             
             # Ensure we have a clean GeoDataFrame
             final_gdf = gpd.GeoDataFrame({

@@ -26,6 +26,7 @@ class LandslideImpactLayer(HurricaneImpactLayer):
             "PopulationVulnerabilityLayer": "population",
             "PovertyVulnerabilityLayer": "poverty",
             "SeverePovertyVulnerabilityLayer": "severe_poverty",
+            "UnvaccinatedVulnerabilityLayer": "unvaccinated",
             "ShelterVulnerabilityLayer": "shelters",
             "HealthFacilityVulnerabilityLayer": "health_facilities"
         }
@@ -52,6 +53,15 @@ class LandslideImpactLayer(HurricaneImpactLayer):
                     return "children"
                 else:
                     return "population"
+        
+        # Special handling for UnvaccinatedVulnerabilityLayer
+        if class_name == "UnvaccinatedVulnerabilityLayer":
+            if hasattr(self.vulnerability_layer, 'age_groups'):
+                # Check if it's children (ages 0, 5, 10, 15) or total population
+                if self.vulnerability_layer.age_groups == [0, 5, 10, 15]:
+                    return "unvaccinated_children"
+                else:
+                    return "unvaccinated"
         
         return name_mapping.get(class_name, "schools")
 

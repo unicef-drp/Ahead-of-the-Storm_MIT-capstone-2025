@@ -35,6 +35,8 @@ plotting:
       children: "OrRd"         # Orange-Red for children
       poverty: "BuPu"          # Blue-Purple for people in poverty
       severe_poverty: "Purples" # Purples for people in severe poverty
+      unvaccinated: "RdPu"     # Reds for unvaccinated population
+      unvaccinated_children: "RdPu"  # Reds for unvaccinated children
       shelters: "YlGn"         # Yellow-Green for shelters
       shelters_population: "YlGn"  # Yellow-Green for shelter population (capacity weighted)
       health_facilities: "BuGn" # Blue-Green for health facilities
@@ -88,6 +90,7 @@ plotting:
     PopulationVulnerabilityLayer: "Population"
     PovertyVulnerabilityLayer: "People in Poverty"
     SeverePovertyVulnerabilityLayer: "People in Severe Poverty"
+    UnvaccinatedVulnerabilityLayer: "Unvaccinated Population"
     ShelterVulnerabilityLayer: "Shelters"
     HealthFacilityVulnerabilityLayer: "Health Facilities"
   

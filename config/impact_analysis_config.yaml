@@ -43,34 +43,7 @@ impact_analysis:
   
   # Analysis runs
   runs:
-    hurricane:
-      - schools
-    #   - school_population
-    #   - health_facilities
-    #   - health_facilities_population
-    #   - shelters
-    #   - shelters_population
-    #   - population
-    #   - children
-    #   - poverty
-    #   - poverty_children
-    #   - severe_poverty
-    #   - severe_poverty_children
-    # landslide:
-    #   - schools
-    #   - children
-    #   - school_population
-    #   - health_facilities
-    #   - health_facilities_population
-    #   - shelters
-    #   - shelters_population
-    #   - population
-    #   - children
-    #   - poverty
-    #   - poverty_children
-    #   - severe_poverty
-    #   - severe_poverty_children
-    # flood:
+    # hurricane:
       # - schools
       # - school_population
       # - health_facilities
@@ -83,4 +56,37 @@ impact_analysis:
       # - poverty_children
       # - severe_poverty
       # - severe_poverty_children
+      # - unvaccinated
+      # - unvaccinated_children
+    # landslide:
+      # - schools
+      # - children
+      # - school_population
+      # - health_facilities
+      # - health_facilities_population
+      # - shelters
+      # - shelters_population
+      # - population
+      # - children
+      # - poverty
+      # - poverty_children
+      # - severe_poverty
+      # - severe_poverty_children
+      # - unvaccinated
+      # - unvaccinated_children
+    flood:
+      # - schools
+      # - school_population
+      # - health_facilities
+      # - health_facilities_population
+      # - shelters
+      # - shelters_population
+      # - population
+      # - children
+      - poverty
+      # - poverty_children
+      # - severe_poverty
+      # - severe_poverty_children
+      - unvaccinated
+      # - unvaccinated_children
       
