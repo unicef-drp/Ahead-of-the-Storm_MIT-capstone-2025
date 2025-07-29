@@ -97,9 +97,6 @@ Pipfile.lock
 # VS Code
 .vscode/
 
-# MacOS
-.DS_Store
-
 # Conda environments
 *.conda
 env/
