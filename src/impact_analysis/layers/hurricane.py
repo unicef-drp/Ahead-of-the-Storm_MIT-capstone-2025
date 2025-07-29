@@ -33,7 +33,8 @@ class HurricaneExposureLayer(ExposureLayer):
 
     def _cache_path(self):
         date_str = str(self.chosen_forecast).replace(":", "-").replace(" ", "_")
-        return os.path.join(self.cache_dir, f"hurricane_exposure_{date_str}.gpkg")
+        wind_threshold = get_config_value(self.config, "impact_analysis.hurricane.wind_threshold.speed_knots", 50)
+        return os.path.join(self.cache_dir, f"hurricane_exposure_{wind_threshold}kt_{date_str}.gpkg")
 
     def _compute_member_regions(self):
         df_ens = self.hurricane_df[
@@ -57,10 +58,12 @@ class HurricaneExposureLayer(ExposureLayer):
             for _, row in member_data.iterrows():
                 lat = row["latitude"]
                 lon = row["longitude"]
-                r_ne = row.get("radius_50_knot_winds_ne_km", 0) or 0
-                r_se = row.get("radius_50_knot_winds_se_km", 0) or 0
-                r_sw = row.get("radius_50_knot_winds_sw_km", 0) or 0
-                r_nw = row.get("radius_50_knot_winds_nw_km", 0) or 0
+                # Get configurable wind threshold
+                wind_suffix = get_config_value(self.config, "impact_analysis.hurricane.wind_threshold.column_suffix", "50_knot")
+                r_ne = row.get(f"radius_{wind_suffix}_winds_ne_km", 0) or 0
+                r_se = row.get(f"radius_{wind_suffix}_winds_se_km", 0) or 0
+                r_sw = row.get(f"radius_{wind_suffix}_winds_sw_km", 0) or 0
+                r_nw = row.get(f"radius_{wind_suffix}_winds_nw_km", 0) or 0
                 if any([r_ne, r_se, r_sw, r_nw]):
                     poly = wind_quadrant_polygon(lat, lon, r_ne, r_se, r_sw, r_nw)
                     if poly is not None and poly.is_valid and not poly.is_empty:

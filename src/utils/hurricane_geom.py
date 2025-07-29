@@ -98,16 +98,28 @@ def bspline_smooth(coords, smoothing_factor=0, num_points=200):
     # Remove duplicate closing point for periodic spline
     if np.allclose(coords[0], coords[-1]):
         coords = coords[:-1]
+    
+    # Check if we have enough points for spline fitting
+    if len(coords) < 3:
+        # Return original coordinates if too few points
+        return list(coords)
+    
     x, y = coords[:, 0], coords[:, 1]
-    # Fit a periodic B-spline to the coordinates
-    tck, u = splprep([x, y], s=smoothing_factor, per=True)
-    u_new = np.linspace(0, 1, num_points)
-    x_new, y_new = splev(u_new, tck)
-    smoothed = list(zip(x_new, y_new))
-    # Ensure the output is closed
-    if not np.allclose(smoothed[0], smoothed[-1]):
-        smoothed.append(smoothed[0])
-    return smoothed
+    
+    try:
+        # Fit a periodic B-spline to the coordinates
+        tck, u = splprep([x, y], s=smoothing_factor, per=True)
+        u_new = np.linspace(0, 1, num_points)
+        x_new, y_new = splev(u_new, tck)
+        smoothed = list(zip(x_new, y_new))
+        # Ensure the output is closed
+        if not np.allclose(smoothed[0], smoothed[-1]):
+            smoothed.append(smoothed[0])
+        return smoothed
+    except (ValueError, TypeError) as e:
+        # If spline fitting fails, return original coordinates
+        print(f"Warning: B-spline smoothing failed, using original coordinates: {e}")
+        return list(coords)
 
 
 def roundcorner_smooth(coords, puff_deg=0.05, shrink_ratio=0.6, resolution=16):
