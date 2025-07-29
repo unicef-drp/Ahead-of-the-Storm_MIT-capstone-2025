@@ -3,6 +3,7 @@ import numpy as np
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import rasterio
+from typing import Dict, Any
 from shapely.geometry import box
 from src.impact_analysis.layers.base import ExposureLayer
 from src.utils.config_utils import get_config_value
@@ -435,35 +436,22 @@ class FloodExposureLayer(ExposureLayer):
 
         return ax
 
-    def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
-        grid_gdf = self.compute_grid()
-        nicaragua_gdf = get_nicaragua_boundary()
-        import matplotlib.pyplot as plt
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this flood exposure layer."""
+        return {
+            "layer_type": "exposure",
+            "hazard_type": "Flood",
+            "data_column": "probability",
+            "colormap": "Blues",
+            "title_template": "Probability of Forecasted Flood",
+            "legend_template": "Flood Probability per Cell",
+            "filename_template": "flood_exposure_{parameters}",
+            "special_features": ["axis_limits"]
+        }
 
-        fig = None
-        if ax is None:
-            fig, ax = plt.subplots(figsize=(12, 10))
-        grid_gdf.plot(
-            ax=ax,
-            column="probability",
-            cmap="Blues",
-            linewidth=0.1,
-            edgecolor="grey",
-            alpha=0.7,
-            legend=True,
-            legend_kwds={"label": "Flood Probability per Cell"},
-        )
-        nicaragua_gdf.plot(
-            ax=ax, color="none", edgecolor="black", linewidth=3, alpha=1.0
-        )
-        # Set axis limits to Nicaragua bounding box
-        minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
-        ax.set_xlim(minx, maxx)
-        ax.set_ylim(miny, maxy)
-        ax.set_title("Flood Exposure Probability Heatmap (Ensemble)")
-        plt.tight_layout()
-        base = os.path.splitext(os.path.basename(self.flood_raster_path))[0]
-        out_path = os.path.join(output_dir, f"flood_exposure_{base}.png")
-        plt.savefig(out_path, dpi=300, bbox_inches="tight")
-        print(f"Saved flood exposure plot: {out_path}")
-        plt.close(fig)
+    def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
+        """Plot the flood exposure layer using universal plotting function."""
+        from src.impact_analysis.utils.plotting_utils import plot_layer_with_scales
+        
+        # Use universal plotting function
+        plot_layer_with_scales(self, output_dir=output_dir)

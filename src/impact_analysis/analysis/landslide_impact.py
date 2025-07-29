@@ -7,6 +7,7 @@ import os
 import numpy as np
 import geopandas as gpd
 import matplotlib.pyplot as plt
+from typing import Dict, Any
 from src.impact_analysis.analysis.hurricane_impact import HurricaneImpactLayer
 from src.utils.config_utils import get_config_value
 from src.utils.hurricane_geom import get_nicaragua_boundary
@@ -58,7 +59,7 @@ class LandslideImpactLayer(HurricaneImpactLayer):
         """Override to use high-resolution computation grid."""
         # Use high-resolution grids for computation
         exposure_grid = self.exposure_layer.get_computation_grid()
-        vulnerability_grid = self.vulnerability_layer.compute_grid()
+        vulnerability_grid = self.vulnerability_layer.get_computation_grid()
         
         # Ensure grids have same length
         if len(exposure_grid) != len(vulnerability_grid):
@@ -78,72 +79,65 @@ class LandslideImpactLayer(HurricaneImpactLayer):
         
         return impact_gdf
 
-    def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
-        """Override plot method to use landslide-specific naming and visualization grid."""
-        # Use visualization grid for plotting
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this landslide impact layer."""
+        vuln_name = self._get_vulnerability_name()
+        return {
+            "layer_type": "impact",
+            "hazard_type": "Landslide",
+            "vulnerability_type": vuln_name,
+            "data_column": "expected_impact",
+            "colormap": "Reds",
+            "title_template": "Number of {vulnerability_type} to be Impacted by Forecasted {hazard_type}",
+            "legend_template": "Expected Impact per Cell",
+            "filename_template": "{hazard_type}_impact_{vulnerability_type}_{parameters}",
+            "special_features": ["ensemble_method"]
+        }
+
+    def get_plot_data(self):
+        """Override to use visualization grid for plotting while keeping computation at high resolution."""
+        # Use visualization grids for plotting
         exposure_grid = self.exposure_layer.get_visualization_grid()
+        vulnerability_grid = self.vulnerability_layer.compute_grid()  # Use standard resolution for vulnerability
         
-        # Use the existing vulnerability layer but get visualization grid
-        vulnerability_grid = self.vulnerability_layer.get_visualization_grid()
+        # Get vulnerability values
         value_col = getattr(self.vulnerability_layer, "value_column", "school_count")
         vulnerability = vulnerability_grid[value_col].values
         
-        # Create visualization impact grid
+        # For ensemble-based approach, use mean probability for expected impact
+        probability = exposure_grid["probability"].values
+        
+        # Calculate impact at visualization resolution
+        impact_values = probability * vulnerability
+        
+        return value_col, impact_values
+
+    def get_visualization_grid(self):
+        """Get standard resolution grid for visualization."""
+        # Use visualization grids for plotting
+        exposure_grid = self.exposure_layer.get_visualization_grid()
+        vulnerability_grid = self.vulnerability_layer.compute_grid()  # Use standard resolution for vulnerability
+        
+        # Get vulnerability values
+        value_col = getattr(self.vulnerability_layer, "value_column", "school_count")
+        vulnerability = vulnerability_grid[value_col].values
+        
+        # For ensemble-based approach, use mean probability for expected impact
+        probability = exposure_grid["probability"].values
+        
+        # Calculate impact at visualization resolution
+        impact_values = probability * vulnerability
+        
+        # Create impact grid
         impact_gdf = exposure_grid.copy()
-        impact_gdf["vulnerability"] = vulnerability
-        impact_gdf["expected_impact"] = (
-            impact_gdf["probability"] * impact_gdf["vulnerability"]
-        )
+        impact_gdf["expected_impact"] = impact_values
         
-        nicaragua_gdf = get_nicaragua_boundary()
-        show_fig = False
-        if ax is None:
-            fig, ax = plt.subplots(figsize=(12, 10))
-            show_fig = True
-        
-        # Ensure ax is a single Axes object
-        if isinstance(ax, (list, tuple)):
-            ax = ax[0]
-        
-        impact_gdf.plot(
-            ax=ax,
-            column="expected_impact",
-            cmap="OrRd",
-            linewidth=0.1,
-            edgecolor="grey",
-            alpha=0.7,
-            legend=True,
-            legend_kwds={"label": "Expected Impact per Cell"},
-        )
-        
-        if nicaragua_gdf is not None:
-            nicaragua_gdf.plot(
-                ax=ax, color="none", edgecolor="black", linewidth=3, alpha=1.0
-            )
-        
-        # Get vulnerability name for file naming
-        if hasattr(self.vulnerability_layer, "__class__"):
-            vuln_name = (
-                self.vulnerability_layer.__class__.__name__.replace(
-                    "VulnerabilityLayer", ""
-                ).lower()
-                or "vulnerability"
-            )
-        else:
-            vuln_name = "vulnerability"
-        
-        ax.set_title(f"Landslide Impact Heatmap - Ensemble Approach (Expected Affected Entities)")
-        plt.tight_layout()
-        
-        # Create landslide-specific filename
-        out_path = os.path.join(
-            output_dir, f"landslide_impact_{vuln_name}_ensemble.png"
-        )
-        os.makedirs(os.path.dirname(out_path), exist_ok=True)
-        plt.savefig(out_path, dpi=300, bbox_inches="tight")
-        print(f"Saved landslide impact plot: {out_path}")
-        if show_fig:
-            plt.close(fig)
+        return impact_gdf
+
+    def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
+        """Plot the landslide impact layer using universal plotting function."""
+        from src.impact_analysis.utils.plotting_utils import plot_layer_with_scales
+        plot_layer_with_scales(self, output_dir=output_dir)
 
     def plot_binary_probability(self, output_dir="data/results/impact_analysis/"):
         """Override binary probability method to use landslide-specific naming and visualization grid."""

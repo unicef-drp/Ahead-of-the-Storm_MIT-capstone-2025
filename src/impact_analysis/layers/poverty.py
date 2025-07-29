@@ -2,6 +2,7 @@ import os
 import numpy as np
 import geopandas as gpd
 from shapely.geometry import box
+from typing import Dict, Any
 from src.impact_analysis.layers.base import VulnerabilityLayer
 from src.impact_analysis.layers.population import PopulationVulnerabilityLayer
 from src.utils.config_utils import get_config_value
@@ -211,6 +212,32 @@ class PovertyVulnerabilityLayer(VulnerabilityLayer):
             ax=ax,
         )
 
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this poverty vulnerability layer."""
+        # Determine if this is children or total population
+        if self.age_groups == [0, 5, 10, 15]:
+            vulnerability_type = "Children in Poverty"
+            colormap = "BuPu"
+        else:
+            vulnerability_type = "People in Poverty"
+            colormap = "BuPu"
+        
+        return {
+            "layer_type": "vulnerability",
+            "vulnerability_type": vulnerability_type,
+            "data_column": "poverty_count",
+            "colormap": colormap,
+            "title_template": "Concentration of {vulnerability_type}",
+            "legend_template": "{vulnerability_type} per Cell",
+            "filename_template": "{vulnerability_type}_vulnerability_{parameters}",
+            "special_features": []
+        }
+
+    def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
+        """Plot the poverty vulnerability layer using universal plotting function."""
+        from src.impact_analysis.utils.plotting_utils import plot_layer_with_scales
+        plot_layer_with_scales(self, output_dir=output_dir)
+
     @property
     def value_column(self):
         return "poverty_count"
@@ -318,21 +345,31 @@ class SeverePovertyVulnerabilityLayer(VulnerabilityLayer):
         self._severe_poverty_grid = self.grid_gdf["severepoverty_count"].values
         return self.grid_gdf
 
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this severe poverty vulnerability layer."""
+        # Determine if this is children or total population
+        if self.age_groups == [0, 5, 10, 15]:
+            vulnerability_type = "Children in Severe Poverty"
+            colormap = "Purples"
+        else:
+            vulnerability_type = "People in Severe Poverty"
+            colormap = "Purples"
+        
+        return {
+            "layer_type": "vulnerability",
+            "vulnerability_type": vulnerability_type,
+            "data_column": "severepoverty_count",
+            "colormap": colormap,
+            "title_template": "Concentration of {vulnerability_type}",
+            "legend_template": "{vulnerability_type} per Cell",
+            "filename_template": "{vulnerability_type}_vulnerability_{parameters}",
+            "special_features": []
+        }
+
     def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
-        grid_gdf = self.compute_grid()
-        age_str = "_".join(map(str, self.age_groups))
-        output_filename = f"severe_poverty_vulnerability_{self.gender}_ages_{age_str}.png"
-        plot_title = f"People in Severe Poverty Vulnerability Heatmap (Log Scale)\nGender: {self.gender}, Ages: {self.age_groups}"
-        self._plot_vulnerability_grid(
-            grid_gdf,
-            value_column="severepoverty_count",
-            cmap="Reds",
-            legend_label="Log10(People in Severe Poverty + 1) per Cell",
-            output_dir=output_dir,
-            output_filename=output_filename,
-            plot_title=plot_title,
-            ax=ax,
-        )
+        """Plot the severe poverty vulnerability layer using universal plotting function."""
+        from src.impact_analysis.utils.plotting_utils import plot_layer_with_scales
+        plot_layer_with_scales(self, output_dir=output_dir)
 
     @property
     def value_column(self):

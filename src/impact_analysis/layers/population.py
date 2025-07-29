@@ -4,6 +4,7 @@ import geopandas as gpd
 import rasterio
 import matplotlib.pyplot as plt
 from shapely.geometry import box
+from typing import Dict, Any
 from src.impact_analysis.layers.base import VulnerabilityLayer
 from src.utils.config_utils import get_config_value
 from src.utils.path_utils import get_data_path
@@ -139,21 +140,59 @@ class PopulationVulnerabilityLayer(VulnerabilityLayer):
         self._population_grid = self.grid_gdf["population_count"].values
         return self.grid_gdf
 
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this population vulnerability layer."""
+        # Determine if this is children or total population
+        if self.age_groups == [0, 5, 10, 15]:
+            vulnerability_type = "Children"
+            colormap = "OrRd"
+        else:
+            vulnerability_type = "Population"
+            colormap = "Oranges"
+        
+        return {
+            "layer_type": "vulnerability",
+            "vulnerability_type": vulnerability_type,
+            "data_column": "population_count",
+            "colormap": colormap,
+            "title_template": "Concentration of {vulnerability_type}",
+            "legend_template": "{vulnerability_type} per Cell",
+            "filename_template": "{vulnerability_type}_vulnerability_{parameters}",
+            "special_features": []
+        }
+
     def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
-        grid_gdf = self.compute_grid()
-        age_str = "_".join(map(str, self.age_groups))
-        output_filename = f"population_vulnerability_{self.gender}_ages_{age_str}.png"
-        plot_title = f"Population Vulnerability Heatmap (Log Scale)\nGender: {self.gender}, Ages: {self.age_groups}"
-        self._plot_vulnerability_grid(
-            grid_gdf,
-            value_column="population_count",
-            cmap="Purples",
-            legend_label="Log10(Population + 1) per Cell",
-            output_dir=output_dir,
-            output_filename=output_filename,
-            plot_title=plot_title,
-            ax=ax,
-        )
+        """Plot the population vulnerability layer using universal plotting function."""
+        from src.impact_analysis.utils.plotting_utils import plot_layer_with_scales
+        plot_layer_with_scales(self, output_dir=output_dir)
+
+    def get_computation_grid(self):
+        """Get high-resolution grid for computation."""
+        if self.resolution_context != "landslide_computation":
+            temp_layer = PopulationVulnerabilityLayer(
+                self.config, 
+                self.age_groups, 
+                self.gender, 
+                self.cache_dir, 
+                "landslide_computation"
+            )
+            return temp_layer.compute_grid()
+        else:
+            return self.compute_grid()
+
+    def get_visualization_grid(self):
+        """Get standard resolution grid for visualization."""
+        if self.resolution_context != "landslide_visualization":
+            temp_layer = PopulationVulnerabilityLayer(
+                self.config, 
+                self.age_groups, 
+                self.gender, 
+                self.cache_dir, 
+                "landslide_visualization"
+            )
+            return temp_layer.compute_grid()
+        else:
+            return self.compute_grid()
 
     @property
     def value_column(self):

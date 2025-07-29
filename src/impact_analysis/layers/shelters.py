@@ -3,6 +3,7 @@ import numpy as np
 import geopandas as gpd
 import matplotlib.pyplot as plt
 from shapely.geometry import box
+from typing import Dict, Any
 from src.impact_analysis.layers.base import VulnerabilityLayer
 from src.utils.config_utils import get_config_value
 from src.utils.path_utils import get_data_path
@@ -110,30 +111,30 @@ class ShelterVulnerabilityLayer(VulnerabilityLayer):
         self._shelter_grid = self.grid_gdf[value_column].values
         return self.grid_gdf
 
-    def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
-        grid_gdf = self.compute_grid()
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this shelter vulnerability layer."""
         if self.weighted_by_capacity:
-            output_filename = "shelter_capacity_vulnerability.png"
-            plot_title = "Shelter Vulnerability Heatmap (Log Scale) (Capacity Weighted)"
-            value_column = "capacity"
-            cmap = "Reds"
-            legend_label = "Log10(Capacity + 1) per Cell"
+            vulnerability_type = "Shelter Population"
+            colormap = "YlGn"
         else:
-            output_filename = "shelter_vulnerability.png"
-            plot_title = "Shelter Vulnerability Heatmap (Log Scale)"
-            value_column = "shelter_count"
-            cmap = "Blues"
-            legend_label = "Log10(Shelters + 1) per Cell"
-        self._plot_vulnerability_grid(
-            grid_gdf,
-            value_column=value_column,
-            cmap=cmap,
-            legend_label=legend_label,
-            output_dir=output_dir,
-            output_filename=output_filename,
-            plot_title=plot_title,
-            ax=ax,
-        )
+            vulnerability_type = "Shelters"
+            colormap = "YlGn"
+        
+        return {
+            "layer_type": "vulnerability",
+            "vulnerability_type": vulnerability_type,
+            "data_column": self.value_column,
+            "colormap": colormap,
+            "title_template": "Concentration of {vulnerability_type}",
+            "legend_template": "{vulnerability_type} per Cell",
+            "filename_template": "{vulnerability_type}_vulnerability_{parameters}",
+            "special_features": []
+        }
+
+    def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
+        """Plot the shelter vulnerability layer using universal plotting function."""
+        from src.impact_analysis.utils.plotting_utils import plot_layer_with_scales
+        plot_layer_with_scales(self, output_dir=output_dir)
 
     @property
     def value_column(self):
