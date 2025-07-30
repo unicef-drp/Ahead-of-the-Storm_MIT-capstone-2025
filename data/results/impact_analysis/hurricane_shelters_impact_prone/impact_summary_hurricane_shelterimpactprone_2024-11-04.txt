@@ -1,8 +1,0 @@
-Impact summary for hurricane_shelterimpactprone_2024-11-04
-Forecast time: 2024-11-04
-Vulnerability type: shelterimpactprone
-
-Results:
-Expected affected: 15.88
-Best case (min): 0.00 (ensemble member 2.0)
-Worst case (max): 43.00 (ensemble member 5.0)
