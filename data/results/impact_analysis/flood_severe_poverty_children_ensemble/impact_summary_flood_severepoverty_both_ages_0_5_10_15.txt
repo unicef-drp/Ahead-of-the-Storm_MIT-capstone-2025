@@ -1,0 +1,10 @@
+Impact summary for flood_severepoverty_both_ages_0_5_10_15
+Forecast time: N/A
+Vulnerability type: severepoverty
+Age groups: [0, 5, 10, 15]
+Gender: both
+
+Results:
+Expected affected: 8706.00
+Best case (min): 3625.52 (ensemble member 23)
+Worst case (max): 14146.26 (ensemble member 15)

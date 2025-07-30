@@ -1,0 +1,19 @@
+Landslide Impact Analysis Summary
+==================================================
+
+Vulnerability Type: shelters
+Exposure Method: Ensemble (mean probability with spatial correlation)
+
+Ensemble Statistics (50 members):
+  Expected Impact (mean probability): 14.13
+  Best Case (ensemble minimum): 4.00
+  Worst Case (ensemble maximum): 39.00
+  Ensemble Mean: 15.18
+  Ensemble Median: 14.50
+  Ensemble Std Dev: 7.12
+
+Ensemble Distribution:
+  4.00 (min) - 39.00 (max)
+  15.18 ± 7.12 (mean ± std)
+
+Analysis completed with spatial correlation and ensemble sampling.

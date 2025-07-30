@@ -1,0 +1,8 @@
+Impact summary for flood_healthfacility
+Forecast time: N/A
+Vulnerability type: healthfacility
+
+Results:
+Expected affected: 137.38
+Best case (min): 36.00 (ensemble member 23)
+Worst case (max): 226.00 (ensemble member 30)

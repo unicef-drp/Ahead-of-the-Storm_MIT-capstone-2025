@@ -1,0 +1,8 @@
+Impact summary for flood_schoolpopulation
+Forecast time: N/A
+Vulnerability type: schoolpopulation
+
+Results:
+Expected affected: 81683.80
+Best case (min): 8322.00 (ensemble member 23)
+Worst case (max): 148657.00 (ensemble member 30)

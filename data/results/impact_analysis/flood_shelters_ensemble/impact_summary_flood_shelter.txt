@@ -1,0 +1,8 @@
+Impact summary for flood_shelter
+Forecast time: N/A
+Vulnerability type: shelter
+
+Results:
+Expected affected: 48.36
+Best case (min): 9.00 (ensemble member 13)
+Worst case (max): 80.00 (ensemble member 4)

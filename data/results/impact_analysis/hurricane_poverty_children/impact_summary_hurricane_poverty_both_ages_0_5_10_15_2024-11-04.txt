@@ -1,0 +1,10 @@
+Impact summary for hurricane_poverty_both_ages_0_5_10_15_2024-11-04
+Forecast time: 2024-11-04
+Vulnerability type: poverty
+Age groups: [0, 5, 10, 15]
+Gender: both
+
+Results:
+Expected affected: 26657.19
+Best case (min): 0.00 (ensemble member 18.0)
+Worst case (max): 175456.13 (ensemble member 27.0)

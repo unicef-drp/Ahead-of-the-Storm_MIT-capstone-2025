@@ -1,0 +1,8 @@
+Impact summary for hurricane_healthfacilitypopulationimpactprone_2024-11-04
+Forecast time: 2024-11-04
+Vulnerability type: healthfacilitypopulationimpactprone
+
+Results:
+Expected affected: 55403.24
+Best case (min): 0.00 (ensemble member 18.0)
+Worst case (max): 261541.74 (ensemble member 5.0)

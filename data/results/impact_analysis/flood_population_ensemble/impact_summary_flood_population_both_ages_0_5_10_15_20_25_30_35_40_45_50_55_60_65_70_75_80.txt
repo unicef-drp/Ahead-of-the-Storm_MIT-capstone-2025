@@ -1,0 +1,10 @@
+Impact summary for flood_population_both_ages_0_5_10_15_20_25_30_35_40_45_50_55_60_65_70_75_80
+Forecast time: N/A
+Vulnerability type: population
+Age groups: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
+Gender: both
+
+Results:
+Expected affected: 973722.80
+Best case (min): 79282.41 (ensemble member 23)
+Worst case (max): 1785017.90 (ensemble member 30)

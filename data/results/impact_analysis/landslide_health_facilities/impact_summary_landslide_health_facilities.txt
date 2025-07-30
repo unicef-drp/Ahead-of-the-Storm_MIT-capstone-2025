@@ -1,0 +1,19 @@
+Landslide Impact Analysis Summary
+==================================================
+
+Vulnerability Type: health_facilities
+Exposure Method: Ensemble (mean probability with spatial correlation)
+
+Ensemble Statistics (50 members):
+  Expected Impact (mean probability): 9.11
+  Best Case (ensemble minimum): 2.00
+  Worst Case (ensemble maximum): 18.00
+  Ensemble Mean: 9.02
+  Ensemble Median: 9.00
+  Ensemble Std Dev: 3.20
+
+Ensemble Distribution:
+  2.00 (min) - 18.00 (max)
+  9.02 ± 3.20 (mean ± std)
+
+Analysis completed with spatial correlation and ensemble sampling.

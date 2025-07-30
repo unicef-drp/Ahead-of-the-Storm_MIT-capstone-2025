@@ -1,0 +1,19 @@
+Landslide Impact Analysis Summary
+==================================================
+
+Vulnerability Type: school_population
+Exposure Method: Ensemble (mean probability with spatial correlation)
+
+Ensemble Statistics (50 members):
+  Expected Impact (mean probability): 3076.34
+  Best Case (ensemble minimum): 911.00
+  Worst Case (ensemble maximum): 7738.00
+  Ensemble Mean: 2780.20
+  Ensemble Median: 2524.00
+  Ensemble Std Dev: 1239.01
+
+Ensemble Distribution:
+  911.00 (min) - 7738.00 (max)
+  2780.20 ± 1239.01 (mean ± std)
+
+Analysis completed with spatial correlation and ensemble sampling.

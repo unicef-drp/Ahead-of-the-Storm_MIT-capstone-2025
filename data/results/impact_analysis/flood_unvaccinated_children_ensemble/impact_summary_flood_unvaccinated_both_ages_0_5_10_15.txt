@@ -1,0 +1,10 @@
+Impact summary for flood_unvaccinated_both_ages_0_5_10_15
+Forecast time: N/A
+Vulnerability type: unvaccinated
+Age groups: [0, 5, 10, 15]
+Gender: both
+
+Results:
+Expected affected: 69509.95
+Best case (min): 5491.45 (ensemble member 23)
+Worst case (max): 120793.86 (ensemble member 30)
