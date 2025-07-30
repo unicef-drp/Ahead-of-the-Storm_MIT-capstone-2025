@@ -180,7 +180,9 @@ def plot_impact_prone_regions():
 
     if not Path(grid_path).exists():
         print(f"❌ Preprocessed grid not found: {grid_path}")
-                        print("Please run src/data_prep/create_nightlights_vulnerability_grid.py first.")
+        print(
+            "Please run src/data_prep/create_nightlights_vulnerability_grid.py first."
+        )
         return
 
     print(f"Loading preprocessed grid: {grid_path}")
