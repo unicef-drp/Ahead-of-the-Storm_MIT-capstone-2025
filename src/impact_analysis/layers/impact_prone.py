@@ -191,7 +191,7 @@ class ImpactProneVulnerabilityLayer(VulnerabilityLayer):
             if not os.path.exists(preprocessed_path):
                 raise FileNotFoundError(
                     f"Preprocessed grid not found: {preprocessed_path}\n"
-                    "Please run src/data_prep/preprocess_nightlights_grid.py first."
+                    "Please run src/data_prep/create_nightlights_vulnerability_grid.py first."
                 )
 
             print(f"Loading preprocessed grid: {preprocessed_path}")
