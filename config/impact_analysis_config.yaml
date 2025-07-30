@@ -52,53 +52,53 @@ impact_analysis:
   runs:
     hurricane:
       - schools
-      # - school_population
-      # - health_facilities
-      # - health_facilities_population
-      # - shelters
-      # - shelters_population
-      # - population
-      # - children
-      # - poverty
-      # - poverty_children
-      # - severe_poverty
-      # - severe_poverty_children
-      # - unvaccinated
-      # - unvaccinated_children
-      # - schools_impact_prone
-      # - health_facilities_impact_prone
-      # - shelters_impact_prone
-      # - school_population_impact_prone
-      # - health_facilities_population_impact_prone
-      # - shelters_population_impact_prone
+      - school_population
+      - health_facilities
+      - health_facilities_population
+      - shelters
+      - shelters_population
+      - population
+      - children
+      - poverty
+      - poverty_children
+      - severe_poverty
+      - severe_poverty_children
+      - unvaccinated
+      - unvaccinated_children
+      - schools_impact_prone
+      - health_facilities_impact_prone
+      - shelters_impact_prone
+      - school_population_impact_prone
+      - health_facilities_population_impact_prone
+      - shelters_population_impact_prone
     landslide:
       - schools
-      # - children
-      # - school_population
-      # - health_facilities
-      # - health_facilities_population
-      # - shelters
-      # - shelters_population
-      # - population
-      # - children
-      # - poverty
-      # - poverty_children
-      # - severe_poverty
-      # - severe_poverty_children
-      # - unvaccinated
-      # - unvaccinated_children
+      - children
+      - school_population
+      - health_facilities
+      - health_facilities_population
+      - shelters
+      - shelters_population
+      - population
+      - children
+      - poverty
+      - poverty_children
+      - severe_poverty
+      - severe_poverty_children
+      - unvaccinated
+      - unvaccinated_children
     flood:
       - schools
-      # - school_population
-      # - health_facilities
-      # - health_facilities_population
-      # - shelters
-      # - shelters_population
-      # - population
-      # - children
-      # - poverty
-      # - poverty_children
-      # - severe_poverty
-      # - severe_poverty_children
-      # - unvaccinated
-      # - unvaccinated_children
+      - school_population
+      - health_facilities
+      - health_facilities_population
+      - shelters
+      - shelters_population
+      - population
+      - children
+      - poverty
+      - poverty_children
+      - severe_poverty
+      - severe_poverty_children
+      - unvaccinated
+      - unvaccinated_children

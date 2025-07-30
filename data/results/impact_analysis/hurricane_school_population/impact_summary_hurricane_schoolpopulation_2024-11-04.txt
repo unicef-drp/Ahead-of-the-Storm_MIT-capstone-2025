@@ -3,6 +3,6 @@ Forecast time: 2024-11-04
 Vulnerability type: schoolpopulation
 
 Results:
-Expected affected: 33932.44
-Best case (min): 2045.00 (ensemble member 31.0)
-Worst case (max): 223409.00 (ensemble member 27.0)
+Expected affected: 15545.67
+Best case (min): 0.00 (ensemble member 18.0)
+Worst case (max): 164236.00 (ensemble member 27.0)

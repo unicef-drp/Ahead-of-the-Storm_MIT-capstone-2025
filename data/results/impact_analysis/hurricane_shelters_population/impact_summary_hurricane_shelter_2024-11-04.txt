@@ -3,6 +3,6 @@ Forecast time: 2024-11-04
 Vulnerability type: shelter
 
 Results:
-Expected affected: 20523.05
-Best case (min): 0.00 (ensemble member 20.0)
-Worst case (max): 142978.00 (ensemble member 27.0)
+Expected affected: 9436.74
+Best case (min): 0.00 (ensemble member 18.0)
+Worst case (max): 89169.00 (ensemble member 27.0)

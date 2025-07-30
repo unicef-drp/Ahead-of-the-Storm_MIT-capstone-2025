@@ -53,14 +53,17 @@ class FloodExposureLayer(ExposureLayer):
         self._member_regions = None
         self.cache_dir = cache_dir or get_config_value(
             config,
-            "impact_analysis.output.cache_directory",
-            "data/results/impact_analysis/cache/",
+            "impact_analysis.output.cache_directory"
         )
         os.makedirs(self.cache_dir, exist_ok=True)
 
     def _cache_path(self):
         base = os.path.splitext(os.path.basename(self.flood_raster_path))[0]
         return os.path.join(self.cache_dir, f"flood_exposure_{base}.gpkg")
+    
+    def _ensemble_cache_path(self):
+        base = os.path.splitext(os.path.basename(self.flood_raster_path))[0]
+        return os.path.join(self.cache_dir, f"flood_ensemble_{base}.npy")
 
     def _load_flood_raster(self):
         with rasterio.open(self.flood_raster_path) as src:
@@ -148,7 +151,7 @@ class FloodExposureLayer(ExposureLayer):
             if len(original_flooded_indices) > 0:
                 # Get removal probability from config
                 removal_prob = get_config_value(
-                    self.config, "flood.ensemble_generation.removal_probability", 0.3
+                    self.config, "ensemble_generation.removal_probability", 0.6
                 )
                 remove_count = max(1, int(len(original_flooded_indices) * removal_prob))
                 remove_indices = np.random.choice(
@@ -162,17 +165,15 @@ class FloodExposureLayer(ExposureLayer):
             if len(original_flooded_indices) > 0:
                 # Get ensemble generation parameters from config
                 max_spatial_distance = get_config_value(
-                    self.config, "flood.ensemble_generation.max_spatial_distance", 4
+                    self.config, "ensemble_generation.max_spatial_distance", 2
                 )
                 base_prob = get_config_value(
                     self.config,
-                    "flood.ensemble_generation.base_addition_probability",
-                    0.2,
+                    "ensemble_generation.base_addition_probability", 0.10
                 )
                 decay_factor = get_config_value(
                     self.config,
-                    "flood.ensemble_generation.probability_decay_factor",
-                    0.5,
+                    "ensemble_generation.probability_decay_factor", 0.3
                 )
 
                 # Create a mask for cells that are close to originally flooded cells
@@ -193,7 +194,7 @@ class FloodExposureLayer(ExposureLayer):
                         # Convert distance to grid units (approximate)
                         # Assuming grid resolution is 0.1 degrees
                         grid_res_degrees = get_config_value(
-                            self.config, "impact_analysis.grid.resolution_degrees", 0.1
+                            self.config, "impact_analysis.grid.resolution_degrees"
                         )
 
                         # Calculate how many grid cells away this is
@@ -240,16 +241,19 @@ class FloodExposureLayer(ExposureLayer):
     def compute_grid(self):
         if self.grid_gdf is not None:
             return self.grid_gdf
-        # cache_path = self._cache_path()
-        # if os.path.exists(cache_path):
-        #    print(f"Loading cached flood exposure layer: {cache_path}")
-        #    self.grid_gdf = gpd.read_file(cache_path)
-        #    self._prob_grid = self.grid_gdf["probability"].values
-        #    return self.grid_gdf
+        cache_path = self._cache_path()
+        ensemble_cache_path = self._ensemble_cache_path()
+        if os.path.exists(cache_path) and os.path.exists(ensemble_cache_path):
+           print(f"Loading cached flood exposure layer: {cache_path}")
+           self.grid_gdf = gpd.read_file(cache_path)
+           self._prob_grid = self.grid_gdf["probability"].values
+           # Load ensemble members from cache
+           self._ensemble_members = np.load(ensemble_cache_path, allow_pickle=True)
+           return self.grid_gdf
         # Load flood raster and grid
         flood_data, transform, crs = self._load_flood_raster()
         grid_res = get_config_value(
-            self.config, "impact_analysis.grid.resolution_degrees", 0.1
+            self.config, "impact_analysis.grid.resolution_degrees"
         )
         nicaragua_gdf = get_nicaragua_boundary()
         minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
@@ -318,8 +322,10 @@ class FloodExposureLayer(ExposureLayer):
         self.grid_gdf = grid_gdf
         self._prob_grid = grid_gdf["probability"].values
         self._ensemble_members = ensemble_members
-        # grid_gdf.to_file(cache_path, driver="GPKG")
-        # print(f"Saved flood exposure layer to cache: {cache_path}")
+        grid_gdf.to_file(cache_path, driver="GPKG")
+        np.save(ensemble_cache_path, ensemble_members)
+        print(f"Saved flood exposure layer to cache: {cache_path}")
+        print(f"Saved ensemble members to cache: {ensemble_cache_path}")
         return grid_gdf
 
     def get_grid_cells(self):

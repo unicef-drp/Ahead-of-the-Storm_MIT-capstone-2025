@@ -3,6 +3,6 @@ Forecast time: 2024-11-04
 Vulnerability type: healthfacilityimpactprone
 
 Results:
-Expected affected: 12.46
-Best case (min): 0.00 (ensemble member 31.0)
-Worst case (max): 38.00 (ensemble member 5.0)
+Expected affected: 6.31
+Best case (min): 0.00 (ensemble member 18.0)
+Worst case (max): 32.00 (ensemble member 5.0)

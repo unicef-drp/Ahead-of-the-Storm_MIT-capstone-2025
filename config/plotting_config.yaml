@@ -41,6 +41,13 @@ plotting:
       shelters_population: "YlGn"  # Yellow-Green for shelter population (capacity weighted)
       health_facilities: "BuGn" # Blue-Green for health facilities
       health_facilities_population: "BuGn"  # Blue-Green for health facility population
+      # Impact-prone vulnerability colormaps (using Reds to indicate high-risk areas)
+      schools_impact_prone: "GnBu"          # Green-Blue for schools in impact-prone areas
+      school_population_impact_prone: "GnBu"  # Green-Blue for school population in impact-prone areas
+      health_facilities_impact_prone: "BuGn" # Blue-Green for health facilities in impact-prone areas
+      health_facilities_population_impact_prone: "BuGn"  # Blue-Green for health facility population in impact-prone areas
+      shelters_impact_prone: "YlGn"         # Yellow-Green for shelters in impact-prone areas
+      shelters_population_impact_prone: "YlGn"  # Yellow-Green for shelter population in impact-prone areas
   
   # Legend labels for different scales
   legend_labels:
@@ -93,6 +100,13 @@ plotting:
     UnvaccinatedVulnerabilityLayer: "Unvaccinated Population"
     ShelterVulnerabilityLayer: "Shelters"
     HealthFacilityVulnerabilityLayer: "Health Facilities"
+    # Impact-prone vulnerability layers
+    SchoolImpactProneVulnerabilityLayer: "Schools Impact-Prone"
+    SchoolPopulationImpactProneVulnerabilityLayer: "School Population Impact-Prone"
+    HealthFacilityImpactProneVulnerabilityLayer: "Health Facilities Impact-Prone"
+    HealthFacilityPopulationImpactProneVulnerabilityLayer: "Health Facility Population Impact-Prone"
+    ShelterImpactProneVulnerabilityLayer: "Shelters Impact-Prone"
+    ShelterPopulationImpactProneVulnerabilityLayer: "Shelter Population Impact-Prone"
   
   # Special handling for children vulnerability (PopulationVulnerabilityLayer with age_groups=[0,5,10,15])
   children_vulnerability_type: "Children"
