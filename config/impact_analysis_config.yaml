@@ -31,6 +31,12 @@ impact_analysis:
     flood_data: "data/preprocessed/flood/nicaragua_flood_extent_20201117.tif"
     landslide_data: "data/preprocessed/landslide"
     hurricane_data: "data/preprocessed/weatherlab/synthetic/processed_FNV3_2024_11_04_00_00_ensemble_data_synthetic.csv"
+    nightlights_data: "data/preprocessed/nightlights/processed/nightlights_nicaragua_average.tif"
+  
+  # Impact-prone analysis configuration
+  impact_prone:
+    epsilon: 1.0  # Small value to avoid division by zero
+    threshold_percentile: 90.0  # Consider top 10% as impact-prone
   
   # Hurricane wind threshold configuration
   hurricane:
@@ -40,11 +46,12 @@ impact_analysis:
       speed_knots: 64
       # Column suffix for the wind radius data (e.g., "50_knot" for radius_50_knot_winds_*_km)
       column_suffix: "64_knot"
+
   
   # Analysis runs
   runs:
-    # hurricane:
-      # - schools
+    hurricane:
+      - schools
       # - school_population
       # - health_facilities
       # - health_facilities_population
@@ -58,8 +65,14 @@ impact_analysis:
       # - severe_poverty_children
       # - unvaccinated
       # - unvaccinated_children
-    # landslide:
-      # - schools
+      # - schools_impact_prone
+      # - health_facilities_impact_prone
+      # - shelters_impact_prone
+      # - school_population_impact_prone
+      # - health_facilities_population_impact_prone
+      # - shelters_population_impact_prone
+    landslide:
+      - schools
       # - children
       # - school_population
       # - health_facilities
@@ -75,7 +88,7 @@ impact_analysis:
       # - unvaccinated
       # - unvaccinated_children
     flood:
-      # - schools
+      - schools
       # - school_population
       # - health_facilities
       # - health_facilities_population
@@ -83,10 +96,9 @@ impact_analysis:
       # - shelters_population
       # - population
       # - children
-      - poverty
+      # - poverty
       # - poverty_children
       # - severe_poverty
       # - severe_poverty_children
-      - unvaccinated
+      # - unvaccinated
       # - unvaccinated_children
-      

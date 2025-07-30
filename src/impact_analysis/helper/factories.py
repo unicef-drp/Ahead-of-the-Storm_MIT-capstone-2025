@@ -17,6 +17,14 @@ from src.impact_analysis.layers.poverty import (
     PovertyVulnerabilityLayer,
     SeverePovertyVulnerabilityLayer,
 )
+from src.impact_analysis.layers.impact_prone import (
+    SchoolImpactProneVulnerabilityLayer,
+    HealthFacilityImpactProneVulnerabilityLayer,
+    ShelterImpactProneVulnerabilityLayer,
+    SchoolPopulationImpactProneVulnerabilityLayer,
+    HealthFacilityPopulationImpactProneVulnerabilityLayer,
+    ShelterPopulationImpactProneVulnerabilityLayer,
+)
 from src.impact_analysis.layers.vaccination import UnvaccinatedVulnerabilityLayer
 from src.impact_analysis.analysis.hurricane_impact import HurricaneImpactLayer
 from src.impact_analysis.analysis.landslide_impact import LandslideImpactLayer
@@ -62,14 +70,16 @@ def get_exposure_layer(
             "impact_analysis.output.cache_directory",
             "data/results/impact_analysis/cache/",
         )
-        
+
         # Check for existing cache files
         cache_pattern = os.path.join(cache_dir, "landslide_exposure_*")
         existing_cache = glob.glob(cache_pattern)
-        
+
         if existing_cache:
             # Use cached data - provide a dummy file path since caching will handle it
-            print(f"Found {len(existing_cache)} cached landslide exposure files, using cached data")
+            print(
+                f"Found {len(existing_cache)} cached landslide exposure files, using cached data"
+            )
             landslide_file = "cached"  # Dummy path since cache will be used
         else:
             # Find the latest landslide file only if no cache exists
@@ -82,7 +92,7 @@ def get_exposure_layer(
             # Use the most recent file
             landslide_file = str(max(landslide_files, key=lambda x: x.stat().st_mtime))
             print(f"Using landslide file: {landslide_file}")
-            
+
         return LandslideExposureLayer(
             landslide_file=landslide_file,
             config=config,
@@ -177,6 +187,30 @@ def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=Non
             gender="both",
             cache_dir=cache_dir,
             resolution_context=resolution_context,
+        )
+    if vuln_type == "schools_impact_prone":
+        return SchoolImpactProneVulnerabilityLayer(
+            config, cache_dir=cache_dir, resolution_context=resolution_context
+        )
+    if vuln_type == "health_facilities_impact_prone":
+        return HealthFacilityImpactProneVulnerabilityLayer(
+            config, cache_dir=cache_dir, resolution_context=resolution_context
+        )
+    if vuln_type == "shelters_impact_prone":
+        return ShelterImpactProneVulnerabilityLayer(
+            config, cache_dir=cache_dir, resolution_context=resolution_context
+        )
+    if vuln_type == "school_population_impact_prone":
+        return SchoolPopulationImpactProneVulnerabilityLayer(
+            config, cache_dir=cache_dir, resolution_context=resolution_context
+        )
+    if vuln_type == "health_facilities_population_impact_prone":
+        return HealthFacilityPopulationImpactProneVulnerabilityLayer(
+            config, cache_dir=cache_dir, resolution_context=resolution_context
+        )
+    if vuln_type == "shelters_population_impact_prone":
+        return ShelterPopulationImpactProneVulnerabilityLayer(
+            config, cache_dir=cache_dir, resolution_context=resolution_context
         )
     if vuln_type == "unvaccinated":
         return UnvaccinatedVulnerabilityLayer(

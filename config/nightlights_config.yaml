@@ -1,0 +1,51 @@
+# Nightlights Data Configuration
+# This file contains parameters for downloading and processing VIIRS DNB nightlights data
+
+# Data source configuration
+data_source:
+  name: "VIIRS DNB"
+  provider: "NASA Earthdata"
+  dataset_id: "VNP46A4"  # Annual composite (VNP46A3 for monthly, VNP46A1 for daily)
+  temporal_resolution: "annual"  # annual, monthly, or daily
+  spatial_resolution: "500m"
+
+# Download configuration
+download:
+  output_directory: "data/raw/nightlights"
+  date_range:
+    start_date: "2020-01-01"
+    end_date: "2020-12-31"
+  product_type: "annual"  # annual, monthly, or daily
+  bounding_box_buffer: 0.1   # Buffer around Nicaragua boundary
+
+# Processing configuration
+processing:
+  processed_output_directory: "data/preprocessed/nightlights/processed"
+  output_format: "GeoTIFF"
+  coordinate_system: "EPSG:4326"
+  nodata_value: -9999
+  resampling_method: "bilinear"
+
+  # Masking settings
+  masking:
+    enabled: true
+    use_nicaragua_boundary: true
+    buffer_distance: 0.01  # degrees
+
+# Quality control
+quality_control:
+  min_valid_pixels: 1000
+  max_cloud_cover: 20
+  min_data_quality: 0.8
+
+# Authentication
+authentication:
+  earthdata_username: null  # Set via environment variable
+  earthdata_password: null  # Set via environment variable
+  app_key: null             # Set via environment variable
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "nightlights_download.log" 
