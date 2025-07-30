@@ -7,6 +7,7 @@ import os
 import numpy as np
 import geopandas as gpd
 import matplotlib.pyplot as plt
+from typing import Dict, Any
 from rasterio.mask import geometry_mask
 from scipy.ndimage import gaussian_filter
 from shapely.geometry import box
@@ -405,55 +406,25 @@ class LandslideExposureLayer(ExposureLayer):
         
         return best_case, worst_case
 
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this landslide exposure layer."""
+        return {
+            "layer_type": "exposure",
+            "hazard_type": "Landslide",
+            "data_column": "probability",
+            "colormap": "YlOrBr",
+            "title_template": "Probability of Forecasted Landslide",
+            "legend_template": "Landslide Probability per Cell",
+            "filename_template": "landslide_exposure_{parameters}",
+            "special_features": ["ensemble_method"]
+        }
+
     def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
-        """Plot the landslide exposure layer."""
-        grid_gdf = self.compute_grid()
-        nicaragua_gdf = get_nicaragua_boundary()
+        """Plot the landslide exposure layer using universal plotting function."""
+        from src.impact_analysis.utils.plotting_utils import plot_layer_with_scales
         
-        fig = None
-        if ax is None:
-            fig, ax = plt.subplots(figsize=(12, 10))
-            
-        # Plot the probability grid - like hurricane layer, plot ALL cells
-        grid_gdf.plot(
-            ax=ax,
-            column="probability",
-            cmap="YlOrRd",
-            linewidth=0.1,
-            edgecolor="grey",
-            alpha=0.7,
-            legend=True,
-            legend_kwds={"label": f"Landslide Probability per Cell ({self.resampling_method})"},
-        )
-        
-        # Add Nicaragua boundary
-        if nicaragua_gdf is not None:
-            nicaragua_gdf.plot(
-                ax=ax, color="none", edgecolor="black", linewidth=3, alpha=1.0
-            )
-        
-        ax.set_title(f"Landslide Exposure Probability Heatmap ({self.resampling_method.title()})")
-        plt.tight_layout()
-        
-        # Save to disk
-        from pathlib import Path
-        import re
-        
-        # Handle cached case
-        if self.landslide_file == "cached":
-            date_str = "20250716T0600"  # Use the date from the cache filename
-        else:
-            filename = Path(self.landslide_file).name
-            match = re.search(r'(\d{8}T\d{4})', filename)
-            date_str = match.group(1) if match else 'unknown'
-        
-        out_path = os.path.join(output_dir, f"landslide_exposure_{date_str}_{self.resampling_method}.png")
-        os.makedirs(os.path.dirname(out_path), exist_ok=True)
-        plt.savefig(out_path, dpi=300, bbox_inches="tight")
-        print(f"Saved landslide exposure plot ({self.resampling_method}): {out_path}")
-        
-        if fig:
-            plt.close(fig)
+        # Use universal plotting function
+        plot_layer_with_scales(self, output_dir=output_dir)
 
     def get_grid_cells(self):
         """Return the grid GeoDataFrame (geometry only, no data columns)."""

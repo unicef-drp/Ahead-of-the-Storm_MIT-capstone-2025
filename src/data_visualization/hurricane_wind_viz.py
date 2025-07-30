@@ -42,13 +42,15 @@ def main():
             print(f"Warning: Could not sort by valid_time: {e}")
     # 4. Prepare wind polygons
     wind_polys = []
+    # Get configurable wind threshold (default to 64 knots for this visualization)
+    wind_suffix = "64_knot"  # This could be made configurable via config file
     for _, row in df.iterrows():
         lat = row["latitude"]
         lon = row["longitude"]
-        r_ne = row.get("radius_50_knot_winds_ne_km", 0) or 0
-        r_se = row.get("radius_50_knot_winds_se_km", 0) or 0
-        r_sw = row.get("radius_50_knot_winds_sw_km", 0) or 0
-        r_nw = row.get("radius_50_knot_winds_nw_km", 0) or 0
+        r_ne = row.get(f"radius_{wind_suffix}_winds_ne_km", 0) or 0
+        r_se = row.get(f"radius_{wind_suffix}_winds_se_km", 0) or 0
+        r_sw = row.get(f"radius_{wind_suffix}_winds_sw_km", 0) or 0
+        r_nw = row.get(f"radius_{wind_suffix}_winds_nw_km", 0) or 0
         # Only plot if at least one radius is positive
         if any([r_ne, r_se, r_sw, r_nw]):
             poly = wind_quadrant_polygon(lat, lon, r_ne, r_se, r_sw, r_nw)
@@ -95,12 +97,12 @@ def main():
             label="Track",
             linewidth=2,
         )
-    ax.set_title("Synthetic Hurricane Track and 50kt Wind Regions (Ensemble Member 0)")
+    ax.set_title(f"Synthetic Hurricane Track and {wind_suffix.replace('_', '')} Wind Regions (Ensemble Member 0)")
     ax.set_xlabel("Longitude")
     ax.set_ylabel("Latitude")
     ax.legend()
     plt.tight_layout()
-    out_path = "data/results/wind_spread/synthetic_hurricane_50kt_wind.png"
+    out_path = f"data/results/wind_spread/synthetic_hurricane_{wind_suffix.replace('_', '')}_wind.png"
     plt.savefig(out_path, dpi=300)
     print(f"Saved wind spread plot to: {out_path}")
     plt.close()

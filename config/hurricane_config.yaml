@@ -59,6 +59,14 @@ processing:
   processed_output_directory: "data/preprocessed/weatherlab/processed"
   # Whether to overwrite existing processed files
   overwrite_existing: true
+
+# Wind threshold configuration for impact analysis
+wind_threshold:
+  # Wind speed threshold in knots for hurricane impact analysis
+  # Options: 34, 50, 64 (corresponding to tropical storm, tropical cyclone, hurricane force winds)
+  speed_knots: 64
+  # Column suffix for the wind radius data (e.g., "50_knot" for radius_50_knot_winds_*_km)
+  column_suffix: "64_knot"
   
 # Logging configuration
 logging:

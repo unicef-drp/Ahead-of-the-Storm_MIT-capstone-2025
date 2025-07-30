@@ -1,0 +1,109 @@
+# Plotting configuration for impact analysis layers
+# This file controls colors, scales, and styling for all plots
+
+plotting:
+  # Default settings for all plots
+  default_scales: ["linear", "log"]
+  output_directory: "data/results/impact_analysis"
+  dpi: 300
+  figure_size: [12, 10]
+  linewidth: 0.1
+  edgecolor: "grey"
+  alpha: 0.7
+  boundary_linewidth: 3
+  boundary_color: "black"
+  
+  # Color schemes for different layer types
+  colormaps:
+    # Exposure layer colormaps
+    exposure:
+      hurricane: "YlOrRd"      # Yellow-Orange-Red for hurricane probability
+      flood: "Blues"           # Blues for flood probability  
+      landslide: "YlOrBr"      # Yellow-Orange-Brown for landslide probability
+    
+    # Impact layer colormaps
+    impact:
+      hurricane: "Reds"        # Reds for hurricane impact
+      flood: "Reds"            # Reds for flood impact
+      landslide: "Reds"        # Reds for landslide impact
+    
+    # Vulnerability layer colormaps
+    vulnerability:
+      schools: "GnBu"          # Green-Blue for schools
+      school_population: "GnBu"  # Green-Blue for school population
+      population: "Oranges"    # Oranges for general population
+      children: "OrRd"         # Orange-Red for children
+      poverty: "BuPu"          # Blue-Purple for people in poverty
+      severe_poverty: "Purples" # Purples for people in severe poverty
+      unvaccinated: "RdPu"     # Reds for unvaccinated population
+      unvaccinated_children: "RdPu"  # Reds for unvaccinated children
+      shelters: "YlGn"         # Yellow-Green for shelters
+      shelters_population: "YlGn"  # Yellow-Green for shelter population (capacity weighted)
+      health_facilities: "BuGn" # Blue-Green for health facilities
+      health_facilities_population: "BuGn"  # Blue-Green for health facility population
+  
+  # Legend labels for different scales
+  legend_labels:
+    linear:
+      exposure: "{hazard_type} Probability per Cell"
+      vulnerability: "{vulnerability_type} per Cell"
+      impact: "Expected Impact per Cell"
+    log:
+      exposure: "Log10({hazard_type} Probability + 1) per Cell"
+      vulnerability: "Log10({vulnerability_type} + 1) per Cell"
+      impact: "Log10(Expected Impact + 1) per Cell"
+  
+  # Title templates
+  titles:
+    exposure: "Probability of Forecasted {hazard_type}"
+    vulnerability: "Concentration of {vulnerability_type}"
+    impact: "Number of {vulnerability_type} to be Impacted by Forecasted {hazard_type}"
+    best_case: "Best Case of {vulnerability_type} to be Impacted by Forecasted {hazard_type}"
+    worst_case: "Worst Case of {vulnerability_type} to be Impacted by Forecasted {hazard_type}"
+  
+  # Filename templates
+  filenames:
+    exposure: "{hazard_type}_exposure_{parameters}"
+    vulnerability: "{vulnerability_type}_vulnerability_{parameters}"
+    impact: "{hazard_type}_impact_{vulnerability_type}_{parameters}"
+    best_case: "best_case_{hazard_type}_{vulnerability_type}_{parameters}"
+    worst_case: "worst_case_{hazard_type}_{vulnerability_type}_{parameters}"
+  
+  # Scale-specific filename suffixes
+  scale_suffixes:
+    linear: "_linear"
+    log: "_log"
+  
+  # Special features configuration
+  special_features:
+    flood:
+      set_axis_limits: true    # Set axis limits to Nicaragua bounds
+    landslide:
+      use_visualization_grid: true  # Use visualization grid for plotting
+    hurricane:
+      include_forecast_time: true   # Include forecast time in filenames
+  
+  # Vulnerability type mappings for titles and filenames
+  vulnerability_types:
+    SchoolVulnerabilityLayer: "Schools"
+    SchoolPopulationVulnerabilityLayer: "School Population"
+    PopulationVulnerabilityLayer: "Population"
+    PovertyVulnerabilityLayer: "People in Poverty"
+    SeverePovertyVulnerabilityLayer: "People in Severe Poverty"
+    UnvaccinatedVulnerabilityLayer: "Unvaccinated Population"
+    ShelterVulnerabilityLayer: "Shelters"
+    HealthFacilityVulnerabilityLayer: "Health Facilities"
+  
+  # Special handling for children vulnerability (PopulationVulnerabilityLayer with age_groups=[0,5,10,15])
+  children_vulnerability_type: "Children"
+  
+  # Special handling for population-weighted vulnerability layers
+  population_weighted_vulnerability_types:
+    health_facilities_population: "Health Facility Population"
+    shelters_population: "Shelter Population"
+  
+  # Hazard type mappings for titles and filenames
+  hazard_types:
+    HurricaneExposureLayer: "Hurricane"
+    FloodExposureLayer: "Flood"
+    LandslideExposureLayer: "Landslide" 
