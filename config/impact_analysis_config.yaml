@@ -46,21 +46,12 @@ impact_analysis:
       speed_knots: 64
       # Column suffix for the wind radius data (e.g., "50_knot" for radius_50_knot_winds_*_km)
       column_suffix: "64_knot"
-  
-  # Hurricane wind threshold configuration
-  hurricane:
-    wind_threshold:
-      # Wind speed threshold in knots for hurricane impact analysis
-      # Options: 34, 50, 64 (corresponding to tropical storm, tropical cyclone, hurricane force winds)
-      speed_knots: 64
-      # Column suffix for the wind radius data (e.g., "50_knot" for radius_50_knot_winds_*_km)
-      column_suffix: "64_knot"
+
   
   # Analysis runs
   runs:
-    # hurricane:
-
-      # - schools
+    hurricane:
+      - schools
       # - school_population
       # - health_facilities
       # - health_facilities_population
@@ -80,8 +71,8 @@ impact_analysis:
       # - school_population_impact_prone
       # - health_facilities_population_impact_prone
       # - shelters_population_impact_prone
-    # landslide:
-      # - schools
+    landslide:
+      - schools
       # - children
       # - school_population
       # - health_facilities
@@ -96,8 +87,8 @@ impact_analysis:
       # - severe_poverty_children
       # - unvaccinated
       # - unvaccinated_children
-    # flood:
-      # - schools
+    flood:
+      - schools
       # - school_population
       # - health_facilities
       # - health_facilities_population
