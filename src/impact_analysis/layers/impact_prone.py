@@ -3,6 +3,7 @@ import numpy as np
 import geopandas as gpd
 import rasterio
 import matplotlib.pyplot as plt
+from typing import Dict, Any
 from shapely.geometry import box
 from src.impact_analysis.layers.base import VulnerabilityLayer
 from src.utils.config_utils import get_config_value
@@ -276,21 +277,26 @@ class ImpactProneVulnerabilityLayer(VulnerabilityLayer):
 
         return filtered_counts
 
-    def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
-        grid_gdf = self.compute_grid()
-        output_filename = f"{self.infrastructure_type}_impact_prone_vulnerability.png"
-        plot_title = f"{self.infrastructure_type.title()} Impact-Prone Vulnerability Heatmap (Log Scale)"
+    def get_plot_metadata(self) -> Dict[str, Any]:
+        """Return metadata for plotting this impact-prone vulnerability layer."""
+        return {
+            "layer_type": "vulnerability",
+            "hazard_type": "Impact-Prone",
+            "vulnerability_type": f"{self.infrastructure_type.title()} Impact-Prone",
+            "data_column": self.value_column,
+            "colormap": "Reds",
+            "title_template": "Concentration of {vulnerability_type}",
+            "legend_template": "Log10({vulnerability_type} + 1) per Cell",
+            "filename_template": "{vulnerability_type}_vulnerability_{parameters}",
+            "special_features": []
+        }
 
-        self._plot_vulnerability_grid(
-            grid_gdf,
-            value_column=f"{self.infrastructure_type}_count",
-            cmap="Reds",
-            legend_label=f"Log10({self.infrastructure_type.title()} + 1) per Cell",
-            output_dir=output_dir,
-            output_filename=output_filename,
-            plot_title=plot_title,
-            ax=ax,
-        )
+    def plot(self, ax=None, output_dir="data/results/impact_analysis/"):
+        """Plot the impact-prone vulnerability layer using universal plotting function."""
+        from src.impact_analysis.utils.plotting_utils import plot_layer_with_scales
+        
+        # Use universal plotting function
+        plot_layer_with_scales(self, output_dir=output_dir)
 
     @property
     def value_column(self):
