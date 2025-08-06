@@ -28,20 +28,23 @@ def main(config_path="config/flood_config.yaml"):
     output_dir = flood_cfg["output_directory"]
     riskmap_dir = flood_cfg["riskmap_dir"]
     riskmap_files = flood_cfg["riskmap_files"]
+    
     # Build flood maps dict (RP:int -> path)
     flood_maps_dict = {}
     for k, v in riskmap_files.items():
         rp = int(k.replace("h", ""))
         flood_maps_dict[rp] = os.path.join(riskmap_dir, v)
+    
     # Model params
     DOWNSAMPLE_FACTOR = model_cfg["downsample_factor"]
-    SLOPE_WEIGHT = model_cfg["slope_weight"]
-    TWI_WEIGHT = model_cfg["twi_weight"]
-    DEPTH_TO_INUNDATION_COEFF = model_cfg["depth_to_inundation_coeff"]
+    RESOLUTION = model_cfg["resolution"]  # DEM resolution in meters
+    
     print(f"[Flood] DEM: {dem_path}")
     print(f"[Flood] Discharge: {discharge_path}")
     print(f"[Flood] Output dir: {output_dir}")
+    print(f"[Flood] Resolution: {RESOLUTION}m")
     print(f"[Flood] Flood maps: {list(flood_maps_dict.values())}")
+    
     # Check files
     if not os.path.exists(dem_path):
         print(f"[Flood][ERROR] DEM file not found: {dem_path}")
@@ -53,6 +56,7 @@ def main(config_path="config/flood_config.yaml"):
         if not os.path.exists(v):
             print(f"[Flood][ERROR] Flood map not found: {v}")
             sys.exit(1)
+    
     # Terrain analysis
     elevation, transform, crs, bounds = load_elevation_data(DOWNSAMPLE_FACTOR, dem_path)
     slope = calculate_slope(elevation)
@@ -61,18 +65,23 @@ def main(config_path="config/flood_config.yaml"):
     twi = calculate_topographic_wetness_index(elevation, flow_acc, slope)
     threshold = find_optimal_drainage_threshold(flow_acc)
     hand, drainage_mask = calculate_hand_efficient(elevation, flow_acc, threshold)
+    
     # Load flood maps
     flood_maps = load_and_reproject_all_flood_maps(
         elevation.shape, transform, crs, flood_maps_dict
     )
+    
     # Load discharge data
     discharge_gdf = gpd.read_file(discharge_path)
+    
     # Example: process one return period (25)
     rp = 25
     river_network = create_river_network_raster(
         discharge_gdf, elevation.shape, transform, crs
     )
     flood_map = flood_maps[rp]
+    
+    # Use updated flood_fill_algorithm with resolution parameter
     flood_extent = flood_fill_algorithm(
         elevation,
         hand,
@@ -81,10 +90,9 @@ def main(config_path="config/flood_config.yaml"):
         flood_map,
         river_network,
         rp,
-        SLOPE_WEIGHT=SLOPE_WEIGHT,
-        TWI_WEIGHT=TWI_WEIGHT,
-        DEPTH_TO_INUNDATION_COEFF=DEPTH_TO_INUNDATION_COEFF,
+        resolution=RESOLUTION,
     )
+    
     # Save result
     os.makedirs(output_dir, exist_ok=True)
     out_path = os.path.join(output_dir, "nicaragua_flood_extent_20201117.tif")

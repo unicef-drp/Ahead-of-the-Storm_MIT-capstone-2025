@@ -37,17 +37,28 @@ class FloodExposureLayer(ExposureLayer):
         flood_raster_path,
         config,
         cache_dir=None,
-        threshold_m=1,
+        threshold_m=None,
         n_ensemble=50,
         min_flooded_pixels_percent=10,
         resampling_method="mean",
+        use_cache=True,
     ):
         super().__init__(config)
         self.flood_raster_path = flood_raster_path
-        self.threshold_m = threshold_m
+        
+        # Get threshold from config or use default
+        if threshold_m is None:
+            threshold_cm = get_config_value(config, "model.flood_threshold_cm", 50)
+            self.threshold_m = threshold_cm / 100.0  # Convert cm to meters
+        else:
+            self.threshold_m = threshold_m
+            
+        print(f"[FloodExposureLayer] Using flood threshold: {self.threshold_m:.3f}m ({self.threshold_m*100:.1f}cm)")
+        
         self.n_ensemble = n_ensemble
         self.min_flooded_pixels_percent = min_flooded_pixels_percent
         self.resampling_method = resampling_method
+        self.use_cache = use_cache
         self.grid_gdf = None
         self._prob_grid = None
         self._member_regions = None
@@ -70,6 +81,16 @@ class FloodExposureLayer(ExposureLayer):
             flood_data = src.read(1)
             transform = src.transform
             crs = src.crs
+        
+        # Debug: Show flood depth statistics
+        flood_depths = flood_data[flood_data > 0]
+        if len(flood_depths) > 0:
+            print(f"[FloodExposureLayer] Flood depth stats: min={flood_depths.min():.3f}m, max={flood_depths.max():.3f}m, mean={flood_depths.mean():.3f}m")
+            print(f"[FloodExposureLayer] Flood depths > {self.threshold_m:.3f}m: {np.sum(flood_data > self.threshold_m)} pixels")
+            print(f"[FloodExposureLayer] Total flooded pixels: {len(flood_depths)}")
+        else:
+            print(f"[FloodExposureLayer] No flooded pixels found in raster")
+            
         print(
             f"[FloodExposureLayer] Flood raster min: {flood_data.min()}, max: {flood_data.max()}"
         )
@@ -239,17 +260,21 @@ class FloodExposureLayer(ExposureLayer):
         return ensemble_members
 
     def compute_grid(self):
-        if self.grid_gdf is not None:
+        if self.grid_gdf is not None and self.use_cache:
             return self.grid_gdf
         cache_path = self._cache_path()
         ensemble_cache_path = self._ensemble_cache_path()
-        if os.path.exists(cache_path) and os.path.exists(ensemble_cache_path):
+        if self.use_cache and os.path.exists(cache_path) and os.path.exists(ensemble_cache_path):
            print(f"Loading cached flood exposure layer: {cache_path}")
            self.grid_gdf = gpd.read_file(cache_path)
            self._prob_grid = self.grid_gdf["probability"].values
            # Load ensemble members from cache
            self._ensemble_members = np.load(ensemble_cache_path, allow_pickle=True)
            return self.grid_gdf
+        
+        # Compute grid (cache disabled or not found)
+        print(f"Computing flood exposure layer (cache disabled or not found): {cache_path}")
+        
         # Load flood raster and grid
         flood_data, transform, crs = self._load_flood_raster()
         grid_res = get_config_value(
@@ -322,10 +347,14 @@ class FloodExposureLayer(ExposureLayer):
         self.grid_gdf = grid_gdf
         self._prob_grid = grid_gdf["probability"].values
         self._ensemble_members = ensemble_members
-        grid_gdf.to_file(cache_path, driver="GPKG")
-        np.save(ensemble_cache_path, ensemble_members)
-        print(f"Saved flood exposure layer to cache: {cache_path}")
-        print(f"Saved ensemble members to cache: {ensemble_cache_path}")
+        
+        # Save to cache only if use_cache is True
+        if self.use_cache:
+            grid_gdf.to_file(cache_path, driver="GPKG")
+            np.save(ensemble_cache_path, ensemble_members)
+            print(f"Saved flood exposure layer to cache: {cache_path}")
+            print(f"Saved ensemble members to cache: {ensemble_cache_path}")
+        
         return grid_gdf
 
     def get_grid_cells(self):

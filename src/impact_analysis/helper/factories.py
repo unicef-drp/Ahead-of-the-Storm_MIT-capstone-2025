@@ -40,9 +40,10 @@ def get_exposure_layer(
     cache_dir,
     resampling_method="mean",
     resolution_context=None,
+    use_cache=True,
 ):
     if exposure_type == "hurricane":
-        return HurricaneExposureLayer(hurricane_df, forecast_time, config, cache_dir)
+        return HurricaneExposureLayer(hurricane_df, forecast_time, config, cache_dir, use_cache=use_cache)
     if exposure_type == "flood":
         from src.utils.path_utils import get_data_path
 
@@ -58,6 +59,7 @@ def get_exposure_layer(
             config=config,
             cache_dir=cache_dir,
             resampling_method=resampling_method,
+            use_cache=use_cache,
         )
     if exposure_type == "landslide":
         # landslide_df is not used, instead config must specify the landslide file
@@ -75,7 +77,7 @@ def get_exposure_layer(
         cache_pattern = os.path.join(cache_dir, "landslide_exposure_*")
         existing_cache = glob.glob(cache_pattern)
 
-        if existing_cache:
+        if existing_cache and use_cache:
             # Use cached data - provide a dummy file path since caching will handle it
             print(
                 f"Found {len(existing_cache)} cached landslide exposure files, using cached data"
@@ -99,18 +101,19 @@ def get_exposure_layer(
             cache_dir=cache_dir,
             resampling_method=resampling_method,
             resolution_context=resolution_context,
+            use_cache=use_cache,
         )
     raise ValueError(f"Unknown exposure type: {exposure_type}")
 
 
-def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=None):
+def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=None, use_cache=True):
     if vuln_type == "schools":
         return SchoolVulnerabilityLayer(
-            config, cache_dir=cache_dir, resolution_context=resolution_context
+            config, cache_dir=cache_dir, resolution_context=resolution_context, use_cache=use_cache
         )
     if vuln_type == "school_population":
         return SchoolPopulationVulnerabilityLayer(
-            config, cache_dir=cache_dir, resolution_context=resolution_context
+            config, cache_dir=cache_dir, resolution_context=resolution_context, use_cache=use_cache
         )
     if vuln_type == "health_facilities":
         return HealthFacilityVulnerabilityLayer(
@@ -118,6 +121,7 @@ def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=Non
             weighted_by_population=False,
             cache_dir=cache_dir,
             resolution_context=resolution_context,
+            use_cache=use_cache,
         )
     if vuln_type == "health_facilities_population":
         return HealthFacilityVulnerabilityLayer(
@@ -125,6 +129,7 @@ def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=Non
             weighted_by_population=True,
             cache_dir=cache_dir,
             resolution_context=resolution_context,
+            use_cache=use_cache,
         )
     if vuln_type == "shelters":
         return ShelterVulnerabilityLayer(
@@ -132,6 +137,7 @@ def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=Non
             weighted_by_capacity=False,
             cache_dir=cache_dir,
             resolution_context=resolution_context,
+            use_cache=use_cache,
         )
     if vuln_type == "shelters_population":
         return ShelterVulnerabilityLayer(
@@ -139,6 +145,7 @@ def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=Non
             weighted_by_capacity=True,
             cache_dir=cache_dir,
             resolution_context=resolution_context,
+            use_cache=use_cache,
         )
     if vuln_type == "population":
         return PopulationVulnerabilityLayer(
@@ -147,6 +154,7 @@ def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=Non
             gender="both",
             cache_dir=cache_dir,
             resolution_context=resolution_context,
+            use_cache=use_cache,
         )
     if vuln_type == "children":
         return PopulationVulnerabilityLayer(
@@ -155,6 +163,7 @@ def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=Non
             gender="both",
             cache_dir=cache_dir,
             resolution_context=resolution_context,
+            use_cache=use_cache,
         )
     if vuln_type == "poverty":
         return PovertyVulnerabilityLayer(
@@ -163,6 +172,7 @@ def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=Non
             gender="both",
             cache_dir=cache_dir,
             resolution_context=resolution_context,
+            use_cache=use_cache,
         )
     if vuln_type == "poverty_children":
         return PovertyVulnerabilityLayer(
@@ -171,6 +181,7 @@ def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=Non
             gender="both",
             cache_dir=cache_dir,
             resolution_context=resolution_context,
+            use_cache=use_cache,
         )
     if vuln_type == "severe_poverty":
         return SeverePovertyVulnerabilityLayer(
@@ -179,6 +190,7 @@ def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=Non
             gender="both",
             cache_dir=cache_dir,
             resolution_context=resolution_context,
+            use_cache=use_cache,
         )
     if vuln_type == "severe_poverty_children":
         return SeverePovertyVulnerabilityLayer(
@@ -187,30 +199,31 @@ def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=Non
             gender="both",
             cache_dir=cache_dir,
             resolution_context=resolution_context,
+            use_cache=use_cache,
         )
     if vuln_type == "schools_impact_prone":
         return SchoolImpactProneVulnerabilityLayer(
-            config, cache_dir=cache_dir, resolution_context=resolution_context
+            config, cache_dir=cache_dir, resolution_context=resolution_context, use_cache=use_cache
         )
     if vuln_type == "health_facilities_impact_prone":
         return HealthFacilityImpactProneVulnerabilityLayer(
-            config, cache_dir=cache_dir, resolution_context=resolution_context
+            config, cache_dir=cache_dir, resolution_context=resolution_context, use_cache=use_cache
         )
     if vuln_type == "shelters_impact_prone":
         return ShelterImpactProneVulnerabilityLayer(
-            config, cache_dir=cache_dir, resolution_context=resolution_context
+            config, cache_dir=cache_dir, resolution_context=resolution_context, use_cache=use_cache
         )
     if vuln_type == "school_population_impact_prone":
         return SchoolPopulationImpactProneVulnerabilityLayer(
-            config, cache_dir=cache_dir, resolution_context=resolution_context
+            config, cache_dir=cache_dir, resolution_context=resolution_context, use_cache=use_cache
         )
     if vuln_type == "health_facilities_population_impact_prone":
         return HealthFacilityPopulationImpactProneVulnerabilityLayer(
-            config, cache_dir=cache_dir, resolution_context=resolution_context
+            config, cache_dir=cache_dir, resolution_context=resolution_context, use_cache=use_cache
         )
     if vuln_type == "shelters_population_impact_prone":
         return ShelterPopulationImpactProneVulnerabilityLayer(
-            config, cache_dir=cache_dir, resolution_context=resolution_context
+            config, cache_dir=cache_dir, resolution_context=resolution_context, use_cache=use_cache
         )
     if vuln_type == "unvaccinated":
         return UnvaccinatedVulnerabilityLayer(
@@ -219,6 +232,7 @@ def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=Non
             gender="both",
             cache_dir=cache_dir,
             resolution_context=resolution_context,
+            use_cache=use_cache,
         )
     if vuln_type == "unvaccinated_children":
         return UnvaccinatedVulnerabilityLayer(
@@ -227,6 +241,7 @@ def get_vulnerability_layer(vuln_type, config, cache_dir, resolution_context=Non
             gender="both",
             cache_dir=cache_dir,
             resolution_context=resolution_context,
+            use_cache=use_cache,
         )
     raise ValueError(f"Unknown vulnerability type: {vuln_type}")
 
