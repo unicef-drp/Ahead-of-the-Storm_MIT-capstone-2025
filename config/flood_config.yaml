@@ -33,10 +33,14 @@ geoglows:
 # Flood model parameters
 model:
   downsample_factor: 4
-  slope_weight: 0.3
-  twi_weight: 0.4
-  depth_to_inundation_coeff: 1.5
-  flood_threshold_cm: 25
+  # Resolution in meters (SRTM 90m DEM)
+  resolution: 90
+  # Science-based parameters are now calculated dynamically based on:
+  # - HAND thresholds: Nobre et al. (2011)
+  # - Distance thresholds: Özay & Orhan (2023)
+  # - Slope thresholds: Özay & Orhan (2023)
+  # - Factor weights: Özay & Orhan (2023) multi-criteria decision analysis
+  flood_threshold_cm: 50
   n_ensemble: 50
 
 # PLACEHOLDER: Ensemble generation parameters for synthetic flood variations

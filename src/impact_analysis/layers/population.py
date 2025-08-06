@@ -12,11 +12,9 @@ from src.utils.hurricane_geom import get_nicaragua_boundary
 
 
 class PopulationVulnerabilityLayer(VulnerabilityLayer):
-    def __init__(self, config, age_groups=None, gender="both", cache_dir=None, resolution_context=None):
+    def __init__(self, config, age_groups=None, gender="both", cache_dir=None, resolution_context=None, use_cache=True):
         super().__init__(config, resolution_context)
-        self.age_groups = (
-            age_groups if age_groups is not None else list(range(0, 85, 5))
-        )
+        self.age_groups = age_groups or list(range(0, 85, 5))
         self.gender = gender
         self.grid_gdf = None
         self._population_grid = None
@@ -26,6 +24,7 @@ class PopulationVulnerabilityLayer(VulnerabilityLayer):
             "data/results/impact_analysis/cache/",
         )
         os.makedirs(self.cache_dir, exist_ok=True)
+        self.use_cache = use_cache
 
     def _cache_path(self):
         age_str = "_".join(map(str, self.age_groups))
@@ -135,7 +134,7 @@ class PopulationVulnerabilityLayer(VulnerabilityLayer):
                 return grid_gdf
 
         self.grid_gdf = self._load_or_compute_grid(
-            cache_path, "population_count", compute_func
+            cache_path, "population_count", compute_func, use_cache=self.use_cache
         )
         self._population_grid = self.grid_gdf["population_count"].values
         return self.grid_gdf

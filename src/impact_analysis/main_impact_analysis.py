@@ -30,6 +30,7 @@ def run_analysis(
     output_dir,
     cache_dir,
     scenario="mean",
+    use_cache=True,
 ):
     """Run impact analysis for any exposure type and vulnerability type."""
     print(
@@ -64,11 +65,12 @@ def run_analysis(
             cache_dir,
             resampling_method="mean",
             resolution_context="landslide_visualization",
+            use_cache=use_cache,
         )
     else:
         # Standard parameters for hurricane and flood
         exposure = get_exposure_layer(
-            exposure_type, hurricane_df, forecast_time, config, cache_dir
+            exposure_type, hurricane_df, forecast_time, config, cache_dir, use_cache=use_cache
         )
 
     # Plot exposure layer
@@ -88,11 +90,11 @@ def run_analysis(
     if exposure_type == "landslide":
         # Use visualization resolution for plotting
         vulnerability = get_vulnerability_layer(
-            vuln_type, config, cache_dir, resolution_context="landslide_visualization"
+            vuln_type, config, cache_dir, resolution_context="landslide_visualization", use_cache=use_cache
         )
     else:
         # Standard vulnerability layer
-        vulnerability = get_vulnerability_layer(vuln_type, config, cache_dir)
+        vulnerability = get_vulnerability_layer(vuln_type, config, cache_dir, use_cache=use_cache)
 
     # Plot vulnerability layer
     vulnerability.plot(output_dir=output_subdir)
@@ -185,6 +187,12 @@ def main():
         sys.exit(1)
     config = load_config(str(config_path))
 
+    # Get cache setting from config
+    use_cache = get_config_value(config, "impact_analysis.cache.use_cache", True)
+    
+    if not use_cache:
+        print("  [Cache disabled via config - will recompute all layers]")
+
     # Get output and cache directories
     output_dir = get_config_value(
         config, "impact_analysis.output.base_directory", "data/results/impact_analysis"
@@ -247,6 +255,7 @@ def main():
                 output_dir,
                 cache_dir,
                 scenario=scenario,
+                use_cache=use_cache,
             )
     print(f"\nImpact analysis complete! Results saved to: {output_dir}")
 

@@ -89,17 +89,18 @@ class VulnerabilityLayer(abc.ABC):
                 self.config, "impact_analysis.grid.resolution_degrees", 0.1
             )
 
-    def _load_or_compute_grid(self, cache_path, value_column, compute_func):
+    def _load_or_compute_grid(self, cache_path, value_column, compute_func, use_cache=True):
         """
         Shared logic for loading from cache, computing, filling NaNs, and saving.
         - cache_path: path to the cache file
         - value_column: name of the column to check/fill NaNs
         - compute_func: function to call to compute the grid if not cached
+        - use_cache: whether to use cached files (default: True)
         """
         import os
         import geopandas as gpd
 
-        if os.path.exists(cache_path):
+        if use_cache and os.path.exists(cache_path):
             print(f"Loading cached vulnerability layer: {cache_path}")
             # Use parquet for high-res computation, gpkg for visualization
             if cache_path.endswith('.parquet'):
@@ -109,16 +110,21 @@ class VulnerabilityLayer(abc.ABC):
             # Fill NaNs in value column with 0
             grid_gdf[value_column] = grid_gdf[value_column].fillna(0)
             return grid_gdf
+        
         # Compute grid using provided function
+        print(f"Computing vulnerability layer (cache disabled or not found): {cache_path}")
         grid_gdf = compute_func()
         # Fill NaNs in value column with 0
         grid_gdf[value_column] = grid_gdf[value_column].fillna(0)
-        # Save using appropriate format
-        if cache_path.endswith('.parquet'):
-            grid_gdf.to_parquet(cache_path)
-        else:
-            grid_gdf.to_file(cache_path, driver="GPKG")
-        print(f"Saved vulnerability layer to cache: {cache_path}")
+        
+        # Save using appropriate format (only if use_cache is True)
+        if use_cache:
+            if cache_path.endswith('.parquet'):
+                grid_gdf.to_parquet(cache_path)
+            else:
+                grid_gdf.to_file(cache_path, driver="GPKG")
+            print(f"Saved vulnerability layer to cache: {cache_path}")
+        
         return grid_gdf
 
 
