@@ -1,13 +1,13 @@
 Storm Surge Impact Analysis Summary
 ========================================
 
-Expected Impact: 69862.18
-Best Case (min): 34931.09
-Worst Case (max): 139724.37
+Expected Impact: 103100.67
+Best Case (min): 51550.34
+Worst Case (max): 206201.34
 
 Surge Ensemble Statistics:
   Number of ensemble members: 10
   Max surge range: 0.265 - 3.608 m
-  Mean max surge: 1.456 m
+  Mean max surge: 1.455 m
   Coverage range: 2.3 - 14.1%
   Mean coverage: 7.3%

@@ -2,11 +2,11 @@ Interpolated Surge Height Statistics (After Inland Penetration)
 ============================================================
 
 Grid shape: (44, 50)
-Maximum surge height: 1.262 m
-Mean surge height: 0.066 m
-Standard deviation: 0.204 m
-Cells with surge > 0: 273
-Cells with surge > 0.1m: 258
-Cells with surge > 0.5m: 122
-Cells with surge > 1.0m: 26
+Maximum surge height: 1.199 m
+Mean surge height: 0.035 m
+Standard deviation: 0.142 m
+Cells with surge > 0: 172
+Cells with surge > 0.1m: 159
+Cells with surge > 0.5m: 62
+Cells with surge > 1.0m: 9
 Cells with surge > 2.0m: 0

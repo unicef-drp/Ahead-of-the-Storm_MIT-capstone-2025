@@ -47,6 +47,9 @@ surge:
   # Surge threshold for filtering significant surge points
   surge_threshold_m: 0.5  # Only use surge points above this threshold for interpolation
   
+  # Probability threshold for binary surge classification
+  probability_threshold_m: 0.1  # 10cm threshold for binary surge probability
+  
   # Exposure threshold for converting surge heights to exposure probability
   exposure_threshold_m: 0.05  # Surge heights above this threshold are considered exposed
   

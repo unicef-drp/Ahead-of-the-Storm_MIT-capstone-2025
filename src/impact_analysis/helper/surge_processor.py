@@ -100,6 +100,16 @@ class SurgeProcessor:
                 self.bathymetry_crs = src.crs
                 self.bathymetry_transform = src.transform
                 self.bathymetry_bounds = src.bounds
+                
+                # If CRS is None or bounds are in pixel coordinates, fix them
+                if self.bathymetry_crs is None or (self.bathymetry_bounds.left == 0 and self.bathymetry_bounds.right == src.width):
+                    print("  Warning: Bathymetry file appears to be in pixel coordinates")
+                    print("  Setting Nicaragua geographic bounds manually")
+                    # Nicaragua bounds: approximately -87.7°W to -82.7°W, 10.7°N to 15.1°N
+                    self.bathymetry_bounds = rasterio.coords.BoundingBox(
+                        left=-87.7, bottom=10.7, right=-82.7, top=15.1
+                    )
+                    self.bathymetry_crs = rasterio.crs.CRS.from_epsg(4326)
 
                 # Read bathymetry data (downsample if very large)
                 if src.width > 3000 or src.height > 3000:
@@ -224,6 +234,11 @@ class SurgeProcessor:
         bathy_height, bathy_width = self.bathymetry.shape
 
         # Create coordinate arrays for bathymetry
+        # Handle case where CRS is None (assume it's already in lat/lon)
+        if self.bathymetry_crs is None:
+            print("  Warning: No CRS found in bathymetry file, assuming EPSG:4326")
+            self.bathymetry_crs = rasterio.crs.CRS.from_epsg(4326)
+            
         if self.bathymetry_crs.to_string() == "EPSG:4326":
             # Bathymetry is already in lat/lon
             bathy_lons_1d = np.linspace(

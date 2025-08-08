@@ -4,7 +4,7 @@
 impact_analysis:
   # Cache control settings
   cache:
-    use_cache: false  # Set to false to disable cache usage and recompute all layers
+    use_cache: true  # Set to false to disable cache usage and recompute all layers
   
   # Grid resolution settings
   grid:

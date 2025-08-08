@@ -1092,11 +1092,11 @@ class SurgeLayer(ExposureLayer):
     def compute_grid(self) -> gpd.GeoDataFrame:
         """Compute the surge exposure grid using the same grid system as vulnerability layers."""
         try:
-            # Get interpolated surge data with proper coastal buffer
-            interpolated_surge = self._get_interpolated_surge_data()
+            # Get ensemble probability data (proper 0.0-1.0 probabilities)
+            ensemble_probabilities = self._get_ensemble_probability_data()
 
-            if interpolated_surge is None:
-                print("Warning: Could not get interpolated surge data")
+            if ensemble_probabilities is None:
+                print("Warning: Could not get ensemble probability data")
                 # Return empty GeoDataFrame
                 from shapely.geometry import Point
 
@@ -1141,30 +1141,30 @@ class SurgeLayer(ExposureLayer):
                 grid_cells, columns=["geometry"], crs="EPSG:4326"
             )
 
-            # Map surge data to vulnerability grid cells
+            # Map ensemble probability data to vulnerability grid cells
             probabilities = []
             for cell in grid_gdf.geometry:
                 # Get cell center
                 center = cell.centroid
                 x, y = center.x, center.y
 
-                # Map to interpolated surge data coordinates
-                # Interpolated surge data bounds and resolution
-                surge_minx, surge_maxx = -87.686, -82.726
-                surge_miny, surge_maxy = 10.713, 15.113
-                surge_res = 0.1
+                # Map to ensemble probability data coordinates
+                # Ensemble probability data bounds and resolution
+                prob_minx, prob_maxx = -87.686, -82.726
+                prob_miny, prob_maxy = 10.713, 15.113
+                prob_res = 0.1
 
-                # Calculate indices in interpolated surge array
-                i = int((x - surge_minx) / (surge_maxx - surge_minx) * 50)
-                j = int((y - surge_miny) / (surge_maxy - surge_miny) * 44)
+                # Calculate indices in ensemble probability array
+                i = int((x - prob_minx) / (prob_maxx - prob_minx) * 50)
+                j = int((y - prob_miny) / (prob_maxy - prob_miny) * 44)
 
                 # Clamp indices to valid range
                 i = max(0, min(i, 49))
                 j = max(0, min(j, 43))
 
-                # Get surge value from interpolated data
-                surge_value = interpolated_surge[j, i]
-                probabilities.append(surge_value)
+                # Get probability value from ensemble data
+                probability_value = ensemble_probabilities[j, i]
+                probabilities.append(probability_value)
 
             # Add probability column
             grid_gdf["probability"] = probabilities
@@ -1507,6 +1507,87 @@ class SurgeLayer(ExposureLayer):
 
         return reshaped_surge
 
+    def _get_ensemble_probability_data(self):
+        """Get ensemble probability data using binary classification with 10cm threshold."""
+        try:
+            # Get the probability threshold from config
+            from src.utils.config_utils import get_config_value
+            threshold_m = get_config_value(self.config, "surge.probability_threshold_m", 0.1)
+            
+            print(f"Computing ensemble probabilities with {threshold_m}m threshold...")
+            
+            # Check if we have ensemble results available
+            if not hasattr(self, "results") or not self.results:
+                print("No ensemble results available, loading from cache...")
+                if not self._load_cached_results():
+                    print("No cached results found, cannot compute probabilities")
+                    return None
+
+            # Get Nicaragua bounds for target grid
+            from src.utils.hurricane_geom import get_nicaragua_boundary
+            nicaragua_gdf = get_nicaragua_boundary()
+            minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
+
+            resolution = 0.1
+            lons = np.arange(minx, maxx + resolution, resolution)
+            lats = np.arange(miny, maxy + resolution, resolution)
+
+            # Create target grid points
+            grid_lons = []
+            grid_lats = []
+            for j in range(len(lats) - 1):  # latitude (rows)
+                for i in range(len(lons) - 1):  # longitude (columns)
+                    grid_lons.append((lons[i] + lons[i + 1]) / 2)
+                    grid_lats.append((lats[j] + lats[j + 1]) / 2)
+
+            # Initialize probability array
+            ensemble_probabilities = np.zeros(len(grid_lons))
+            
+            # For each grid point, calculate probability across all ensemble members
+            for i, (lon, lat) in enumerate(zip(grid_lons, grid_lats)):
+                # Map grid coordinates to computational grid indices
+                comp_minx, comp_maxx = -89.93, -73.83
+                comp_miny, comp_maxy = 7.78, 18.97
+
+                # Calculate indices in computational grid
+                comp_i = int((lon - comp_minx) / (comp_maxx - comp_minx) * 349)
+                comp_j = int((lat - comp_miny) / (comp_maxy - comp_miny) * 249)
+
+                # Clamp indices to valid range
+                comp_i = max(0, min(comp_i, 348))
+                comp_j = max(0, min(comp_j, 248))
+
+                # Count how many ensemble members exceed threshold at this point
+                exceed_count = 0
+                total_members = 0
+                
+                for member, member_result in self.results.items():
+                    if "final_surge_field" in member_result:
+                        member_surge = member_result["final_surge_field"][comp_j, comp_i]
+                        if member_surge > threshold_m:
+                            exceed_count += 1
+                        total_members += 1
+                
+                # Calculate probability
+                if total_members > 0:
+                    ensemble_probabilities[i] = exceed_count / total_members
+                else:
+                    ensemble_probabilities[i] = 0.0
+
+            # Reshape to grid
+            reshaped_probabilities = ensemble_probabilities.reshape(len(lats) - 1, len(lons) - 1)
+            
+            print(f"Ensemble probability range: {np.min(reshaped_probabilities):.3f} to {np.max(reshaped_probabilities):.3f}")
+            print(f"Probability cells > 0: {np.sum(reshaped_probabilities > 0)}")
+            print(f"Probability cells > 0.5: {np.sum(reshaped_probabilities > 0.5)}")
+            print(f"Probability cells = 1.0: {np.sum(reshaped_probabilities == 1.0)}")
+            
+            return reshaped_probabilities
+            
+        except Exception as e:
+            print(f"Error computing ensemble probabilities: {e}")
+            return None
+            
     def _get_raw_surge_data(self):
         """Get raw surge heights (in meters) without probability conversion."""
         # Load the ensemble mean surge data (raw heights)
@@ -1516,7 +1597,7 @@ class SurgeLayer(ExposureLayer):
             return None
 
         surge_data = np.load(surge_file)
-
+            
         # Get Nicaragua bounds for target grid
         nicaragua_gdf = get_nicaragua_boundary()
         minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
@@ -1552,7 +1633,7 @@ class SurgeLayer(ExposureLayer):
             surge_value = surge_data[j, i]
             raw_surge.append(surge_value)
 
-        # Reshape to grid
+            # Reshape to grid
         reshaped_surge = np.array(raw_surge).reshape(len(lats) - 1, len(lons) - 1)
 
         print(
