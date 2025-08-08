@@ -37,6 +37,22 @@ create-synthetic-hurricane:
 plot-synthetic-trajectory:
 	conda run -n $(ENV_NAME) python src/data_prep/plot_single_trajectory.py
 
+# Test bathymetry processing
+test-bathymetry:
+	conda run -n $(ENV_NAME) python test_bathymetry_processing.py
+
+# Test surge layer
+test-surge-layer:
+	conda run -n $(ENV_NAME) python test_surge_layer.py
+
+# Test surge impact analysis
+test-surge-impact:
+	conda run -n $(ENV_NAME) python test_surge_impact_analysis.py
+
+# Run surge impact analysis
+run-surge-analysis:
+	conda run -n $(ENV_NAME) python -c "from src.impact_analysis.analysis.surge_impact import run_surge_impact_analysis; run_surge_impact_analysis('data/preprocessed/weatherlab/synthetic/processed_FNV3_2024_11_04_00_00_ensemble_data_synthetic.csv')"
+
 
 # Remove the environment (for cleanup)
 clean:

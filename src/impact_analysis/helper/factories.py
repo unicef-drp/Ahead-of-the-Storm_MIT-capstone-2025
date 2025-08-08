@@ -4,6 +4,7 @@ import glob
 from src.impact_analysis.layers.hurricane import HurricaneExposureLayer
 from src.impact_analysis.layers.landslide import LandslideExposureLayer
 from src.impact_analysis.layers.flood import FloodExposureLayer
+from src.impact_analysis.layers.surge import SurgeLayer
 from src.impact_analysis.layers.population import PopulationVulnerabilityLayer
 from src.impact_analysis.layers.schools import (
     SchoolVulnerabilityLayer,
@@ -29,6 +30,7 @@ from src.impact_analysis.layers.vaccination import UnvaccinatedVulnerabilityLaye
 from src.impact_analysis.analysis.hurricane_impact import HurricaneImpactLayer
 from src.impact_analysis.analysis.landslide_impact import LandslideImpactLayer
 from src.impact_analysis.analysis.flood_impact import FloodImpactLayer
+from src.impact_analysis.analysis.surge_impact import SurgeImpactAnalysis
 from src.utils.config_utils import get_config_value
 
 
@@ -101,6 +103,32 @@ def get_exposure_layer(
             cache_dir=cache_dir,
             resampling_method=resampling_method,
             resolution_context=resolution_context,
+            use_cache=use_cache,
+        )
+    if exposure_type == "surge":
+        from src.utils.path_utils import get_data_path
+        
+        # Get hurricane data path for surge
+        hurricane_data_path = get_config_value(
+            config,
+            "impact_analysis.input.surge_data",
+            "data/preprocessed/weatherlab/synthetic/processed_FNV3_2024_11_04_00_00_ensemble_data_synthetic.csv",
+        )
+        hurricane_file = str(get_data_path(hurricane_data_path))
+        
+        # Get bathymetry data path
+        bathymetry_data_path = get_config_value(
+            config,
+            "impact_analysis.input.bathymetry_data",
+            "data/raw/bathymetry",
+        )
+        bathymetry_dir = get_data_path(bathymetry_data_path)
+        
+        return SurgeLayer(
+            hurricane_file=hurricane_file,
+            bathymetry_file=None,  # Will auto-detect
+            config=config,
+            cache_dir=cache_dir,
             use_cache=use_cache,
         )
     raise ValueError(f"Unknown exposure type: {exposure_type}")
@@ -253,4 +281,6 @@ def get_impact_layer(exposure, vulnerability, config):
         return FloodImpactLayer(exposure, vulnerability, config)
     if isinstance(exposure, LandslideExposureLayer):
         return LandslideImpactLayer(exposure, vulnerability, config)
+    if isinstance(exposure, SurgeLayer):
+        return SurgeImpactAnalysis(exposure, vulnerability, config)
     raise ValueError(f"Unknown exposure layer type: {type(exposure)}")

@@ -35,6 +35,8 @@ impact_analysis:
     flood_data: "data/preprocessed/flood/nicaragua_flood_extent_20201117.tif"
     landslide_data: "data/preprocessed/landslide"
     hurricane_data: "data/preprocessed/weatherlab/synthetic/processed_FNV3_2024_11_04_00_00_ensemble_data_synthetic.csv"
+    surge_data: "data/preprocessed/weatherlab/synthetic/processed_FNV3_2024_11_04_00_00_ensemble_data_synthetic.csv"
+    bathymetry_data: "data/raw/bathymetry"
     nightlights_data: "data/preprocessed/nightlights/processed/nightlights_nicaragua_average.tif"
   
   # Impact-prone analysis configuration
@@ -91,14 +93,29 @@ impact_analysis:
       # - severe_poverty_children
       # - unvaccinated
       # - unvaccinated_children
-    flood:
+    # surge:
       # - schools
       # - school_population
       # - health_facilities
       # - health_facilities_population
       # - shelters
       # - shelters_population
-      - population
+       - population
+      # - children
+      # - poverty
+      # - poverty_children
+      # - severe_poverty
+      # - severe_poverty_children
+      # - unvaccinated
+      # - unvaccinated_children
+    # flood:
+      # - schools
+      # - school_population
+      # - health_facilities
+      # - health_facilities_population
+      # - shelters
+      # - shelters_population
+      # - population
       # - children
       # - poverty
       # - poverty_children
