@@ -908,6 +908,12 @@ class SurgeLayer(ExposureLayer):
         all_surge_fields = [r['final_surge_field'] for r in self.results.values()]
         return np.mean([field > threshold for field in all_surge_fields], axis=0)
 
+    def get_plot_data(self) -> Tuple[str, np.ndarray]:
+        """Return data column name and values for plotting."""
+        grid_gdf = self.compute_grid()
+        # Return all surge values - don't filter by population for exposure visualization
+        return "probability", grid_gdf["probability"].values
+
     def get_plot_metadata(self) -> Dict[str, Any]:
         """Return metadata for plotting this exposure layer."""
         return {
@@ -927,7 +933,7 @@ class SurgeLayer(ExposureLayer):
         plot_layer_with_scales(self, output_dir=output_dir)
         
     def compute_grid(self) -> gpd.GeoDataFrame:
-        """Compute the surge exposure grid using standard grid system."""
+        """Compute the surge exposure grid using the same grid system as vulnerability layers."""
         try:
             # Get interpolated surge data with proper coastal buffer
             interpolated_surge = self._get_interpolated_surge_data()
@@ -938,62 +944,59 @@ class SurgeLayer(ExposureLayer):
                 from shapely.geometry import Point
                 return gpd.GeoDataFrame({'probability': [0.0]}, geometry=[Point(0, 0)], crs="EPSG:4326")
             
-            # Use the same grid system as vulnerability layers (same as flood layer)
+            # Use the EXACT same grid system as vulnerability layers
+            from src.impact_analysis.layers.population import PopulationVulnerabilityLayer
             from src.utils.hurricane_geom import get_nicaragua_boundary
             from src.utils.config_utils import get_config_value
             from shapely.geometry import box
             
+            # Create a temporary population layer to get the exact same grid
+            temp_pop_layer = PopulationVulnerabilityLayer(self.config)
+            vulnerability_grid = temp_pop_layer.compute_grid()
+            
+            # Use the vulnerability grid's coordinate system and bounds
             nicaragua_gdf = get_nicaragua_boundary()
             minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
             
-            # Use the same grid resolution as other layers
-            if self.config is None:
-                grid_res = 0.1  # Default fallback
-            else:
-                grid_res = get_config_value(self.config, "impact_analysis.grid.resolution_degrees")
-                if grid_res is None:
-                    grid_res = 0.1  # Fallback if config value not found
+            # Use the same grid resolution as vulnerability layers
+            grid_res = get_config_value(self.config, "impact_analysis.grid.resolution_degrees")
+            if grid_res is None:
+                grid_res = 0.1  # Fallback
             
-            # Create grid using standard approach (same as flood layer)
-            print(f"DEBUG: Creating grid with bounds: {minx}, {miny}, {maxx}, {maxy}")
-            print(f"DEBUG: Grid resolution: {grid_res}")
-            print(f"DEBUG: Config is None: {self.config is None}")
-            
+            # Create grid using EXACT same approach as vulnerability layers
             grid_cells = []
             x_coords = np.arange(minx, maxx, grid_res)
             y_coords = np.arange(miny, maxy, grid_res)
-            
-            print(f"DEBUG: x_coords range: {x_coords[0]} to {x_coords[-1]}, {len(x_coords)} points")
-            print(f"DEBUG: y_coords range: {y_coords[0]} to {y_coords[-1]}, {len(y_coords)} points")
             
             for x in x_coords:
                 for y in y_coords:
                     grid_cells.append(box(x, y, x + grid_res, y + grid_res))
             
-            # Create GeoDataFrame with standard grid
+            # Create GeoDataFrame with same grid as vulnerability layers
             grid_gdf = gpd.GeoDataFrame(grid_cells, columns=["geometry"], crs="EPSG:4326")
             
-            # Map surge data to grid cells
+            # Map surge data to vulnerability grid cells
             probabilities = []
             for cell in grid_gdf.geometry:
-                # Find corresponding surge value from interpolated data
-                # Map grid coordinates to interpolated surge array indices
-                comp_minx, comp_maxx = -89.93, -73.83
-                comp_miny, comp_maxy = 7.78, 18.97
-                
                 # Get cell center
                 center = cell.centroid
                 x, y = center.x, center.y
                 
+                # Map to interpolated surge data coordinates
+                # Interpolated surge data bounds and resolution
+                surge_minx, surge_maxx = -87.686, -82.726
+                surge_miny, surge_maxy = 10.713, 15.113
+                surge_res = 0.1
+                
                 # Calculate indices in interpolated surge array
-                i = int((x - comp_minx) / (comp_maxx - comp_minx) * 50)
-                j = int((y - comp_miny) / (comp_maxy - comp_miny) * 44)
+                i = int((x - surge_minx) / (surge_maxx - surge_minx) * 50)
+                j = int((y - surge_miny) / (surge_maxy - surge_miny) * 44)
                 
                 # Clamp indices to valid range
                 i = max(0, min(i, 49))
                 j = max(0, min(j, 43))
                 
-                # Get surge value
+                # Get surge value from interpolated data
                 surge_value = interpolated_surge[j, i]
                 probabilities.append(surge_value)
             
@@ -1196,6 +1199,10 @@ class SurgeLayer(ExposureLayer):
                 print(f"  Interpolated surge data: {interpolated_file}")
                 print(f"  Interpolated surge statistics: {stats_file}")
                 
+                # Create mean and max surge visualizations for final results
+                results_dir = Path("data/results/impact_analysis/surge_population_ensemble")
+                self._create_mean_max_visualizations(results_dir)
+                
         except Exception as e:
             print(f"  Warning: Could not save interpolated surge data: {e}")
 
@@ -1276,6 +1283,104 @@ class SurgeLayer(ExposureLayer):
         print(f"Reshaped surge shape: {reshaped_surge.shape}")
         
         return reshaped_surge
+
+    def _get_raw_surge_data(self):
+        """Get raw surge heights (in meters) without probability conversion."""
+        # Load the ensemble mean surge data (raw heights)
+        surge_file = Path("data/preprocessed/surge/nicaragua_surge_ensemble_mean.npy")
+        if not surge_file.exists():
+            print("Surge ensemble mean file not found")
+            return None
+        
+        surge_data = np.load(surge_file)
+        
+        # Get Nicaragua bounds for target grid
+        nicaragua_gdf = get_nicaragua_boundary()
+        minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
+        
+        resolution = 0.1
+        lons = np.arange(minx, maxx + resolution, resolution)
+        lats = np.arange(miny, maxy + resolution, resolution)
+        
+        # Create target grid points
+        grid_lons = []
+        grid_lats = []
+        for j in range(len(lats) - 1):  # latitude (rows)
+            for i in range(len(lons) - 1):  # longitude (columns)
+                grid_lons.append((lons[i] + lons[i+1]) / 2)
+                grid_lats.append((lats[j] + lats[j+1]) / 2)
+        
+        # Map raw surge data to grid cells (same mapping as _get_interpolated_surge_data)
+        raw_surge = []
+        for cell_lon, cell_lat in zip(grid_lons, grid_lats):
+            # Map grid coordinates to surge array indices
+            comp_minx, comp_maxx = -89.93, -73.83
+            comp_miny, comp_maxy = 7.78, 18.97
+            
+            # Calculate indices in surge array
+            i = int((cell_lon - comp_minx) / (comp_maxx - comp_minx) * 349)
+            j = int((cell_lat - comp_miny) / (comp_maxy - comp_miny) * 249)
+            
+            # Clamp indices to valid range
+            i = max(0, min(i, 348))
+            j = max(0, min(j, 248))
+            
+            # Get raw surge value (actual height in meters)
+            surge_value = surge_data[j, i]
+            raw_surge.append(surge_value)
+        
+        # Reshape to grid
+        reshaped_surge = np.array(raw_surge).reshape(len(lats)-1, len(lons)-1)
+        
+        print(f"Raw surge range: {np.min(reshaped_surge):.3f}m to {np.max(reshaped_surge):.3f}m")
+        print(f"Raw surge cells > 0: {np.sum(reshaped_surge > 0)}")
+        
+        return reshaped_surge
+
+    def _get_raw_max_surge_data(self):
+        """Get raw maximum surge heights (in meters) across all ensemble members."""
+        try:
+            # Load individual ensemble member files
+            surge_dir = Path("data/preprocessed/surge")
+            max_surge = None
+            
+            # Find all individual member files
+            member_files = list(surge_dir.glob("nicaragua_surge_ensemble_member_*.tif"))
+            
+            if not member_files:
+                print("No individual member files found, using ensemble mean for max")
+                return self._get_raw_surge_data()
+            
+            print(f"Loading {len(member_files)} ensemble members for raw max calculation...")
+            
+            # Load each member and track the maximum
+            for i, member_file in enumerate(member_files):
+                try:
+                    import rasterio
+                    with rasterio.open(member_file) as src:
+                        member_data = src.read(1)  # Read first band
+                        member_data = np.flipud(member_data)  # Flip for correct orientation
+                        
+                        if max_surge is None:
+                            max_surge = member_data.copy()
+                        else:
+                            max_surge = np.maximum(max_surge, member_data)
+                            
+                except Exception as e:
+                    print(f"Warning: Could not load {member_file}: {e}")
+                    continue
+            
+            if max_surge is None:
+                print("Could not load any member files, using ensemble mean")
+                return self._get_raw_surge_data()
+            
+            # Map to the same grid as mean surge
+            raw_max_surge = self._apply_inland_penetration_to_data(max_surge)
+            return raw_max_surge
+            
+        except Exception as e:
+            print(f"Error getting raw max surge data: {e}")
+            return self._get_raw_surge_data()
 
     def _create_interpolated_surge_visualization(self, output_path: Path, interpolated_surge: np.ndarray):
         """Create visualization of interpolated surge heights."""
@@ -1401,16 +1506,16 @@ class SurgeLayer(ExposureLayer):
     def _create_mean_max_visualizations(self, output_dir: Path):
         """Create mean and max surge visualizations for final results."""
         try:
-            # Load the ensemble mean surge data for mean visualization
-            mean_surge = self._get_interpolated_surge_data()
+            # Load the RAW ensemble mean surge data (actual heights in meters)
+            mean_surge = self._get_raw_surge_data()
             if mean_surge is None:
-                print("Warning: Could not get interpolated surge data for mean/max visualizations")
+                print("Warning: Could not get raw surge data for mean/max visualizations")
                 return
             
             # Load individual ensemble members for max visualization
-            max_surge = self._get_max_surge_data()
+            max_surge = self._get_raw_max_surge_data()
             if max_surge is None:
-                print("Warning: Could not get max surge data, using mean for both")
+                print("Warning: Could not get raw max surge data, using mean for both")
                 max_surge = mean_surge
             
             # Get Nicaragua bounds for grid

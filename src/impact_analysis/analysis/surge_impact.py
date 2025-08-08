@@ -245,7 +245,7 @@ class SurgeImpactAnalysis:
         
     # Required methods for ImpactLayer interface
     def compute_impact(self):
-        """Compute the impact grid using standard approach like hurricane/flood."""
+        """Compute the impact grid using spatial intersection approach."""
         if not hasattr(self, 'exposure_layer') or not hasattr(self.exposure_layer, 'results'):
             # Return empty impact grid
             from shapely.geometry import Point
@@ -258,13 +258,26 @@ class SurgeImpactAnalysis:
         # Use the correct value column for this vulnerability layer
         value_col = getattr(self.vulnerability_layer, "value_column", "school_count")
         
-        # Use standard approach: assume grids have same geometry and cell alignment
-        vulnerability = vulnerability_grid[value_col].values
-        impact_gdf = exposure_grid.copy()
-        impact_gdf["vulnerability"] = vulnerability
-        impact_gdf["expected_impact"] = (
-            impact_gdf["probability"] * impact_gdf["vulnerability"]
-        )
+        # Use spatial intersection approach for different grids
+        # Create impact GeoDataFrame using VULNERABILITY grid geometry (only where there's population)
+        impact_gdf = vulnerability_grid.copy()
+        impact_gdf['expected_impact'] = 0.0  # Initialize to zero
+        
+        # For each vulnerability cell, find overlapping exposure cells and calculate impact
+        for vuln_idx, vuln_row in vulnerability_grid.iterrows():
+            if vuln_row[value_col] > 0:  # Only process cells with population
+                vuln_geom = vuln_row.geometry
+                total_impact = 0.0
+                
+                # Find all exposure cells that overlap with this vulnerability cell
+                for exp_idx, exp_row in exposure_grid.iterrows():
+                    if exp_row['probability'] > 0 and vuln_geom.intersects(exp_row.geometry):
+                        # Calculate impact for this overlap
+                        overlap_impact = exp_row['probability'] * vuln_row[value_col]
+                        total_impact += overlap_impact
+                
+                # Assign the total impact to the vulnerability cell
+                impact_gdf.loc[vuln_idx, 'expected_impact'] = total_impact
         
         return impact_gdf
         
