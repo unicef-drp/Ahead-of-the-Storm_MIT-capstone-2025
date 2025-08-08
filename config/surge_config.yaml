@@ -40,9 +40,9 @@ surge:
   
   # Inland penetration parameters
   inland_penetration_enabled: true   # Set to true to allow inland flow
-  max_inland_distance_km: 10.0       # Maximum distance inland (km) - changed to 10km
-  inland_decay_factor: 0.5          # Surge decay per km inland - more aggressive
-  coastal_elevation_threshold: 2.0   # Maximum coastal elevation for penetration (m) - reduced
+  max_inland_distance_km: 10.0       # Maximum distance inland (km)
+  inland_decay_factor: 0.5          # Surge decay per km inland
+  coastal_elevation_threshold: 2.0   # Maximum coastal elevation for penetration (m)
   
   # Surge threshold for filtering significant surge points
   surge_threshold_m: 0.5  # Only use surge points above this threshold for interpolation

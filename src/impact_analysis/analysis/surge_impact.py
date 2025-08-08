@@ -245,37 +245,28 @@ class SurgeImpactAnalysis:
         
     # Required methods for ImpactLayer interface
     def compute_impact(self):
-        """Compute the impact grid."""
+        """Compute the impact grid using standard approach like hurricane/flood."""
         if not hasattr(self, 'exposure_layer') or not hasattr(self.exposure_layer, 'results'):
             # Return empty impact grid
             from shapely.geometry import Point
             return gpd.GeoDataFrame({'expected_impact': [0.0]}, geometry=[Point(0, 0)], crs="EPSG:4326")
         
-        # Get exposure grid (this is the properly gridded exposure data)
+        # Get exposure grid and vulnerability grid
         exposure_grid = self.exposure_layer.compute_grid()
-        
-        # Get vulnerability grid
         vulnerability_grid = self.vulnerability_layer.compute_grid()
         
-        # Calculate impact
-        if hasattr(vulnerability_grid, 'geometry') and len(vulnerability_grid) > 0:
-            value_col = getattr(self.vulnerability_layer, 'value_column', 'value')
-            if value_col in vulnerability_grid.columns and 'probability' in exposure_grid.columns:
-                vulnerability_values = vulnerability_grid[value_col].values
-                exposure_values = exposure_grid['probability'].values
-                
-                # Calculate impact as exposure * vulnerability
-                impact_values = vulnerability_values * exposure_values
-                
-                # Create impact GeoDataFrame
-                impact_gdf = vulnerability_grid.copy()
-                impact_gdf['expected_impact'] = impact_values
-                
-                return impact_gdf
+        # Use the correct value column for this vulnerability layer
+        value_col = getattr(self.vulnerability_layer, "value_column", "school_count")
         
-        # Fallback to empty grid
-        from shapely.geometry import Point
-        return gpd.GeoDataFrame({'expected_impact': [0.0]}, geometry=[Point(0, 0)], crs="EPSG:4326")
+        # Use standard approach: assume grids have same geometry and cell alignment
+        vulnerability = vulnerability_grid[value_col].values
+        impact_gdf = exposure_grid.copy()
+        impact_gdf["vulnerability"] = vulnerability
+        impact_gdf["expected_impact"] = (
+            impact_gdf["probability"] * impact_gdf["vulnerability"]
+        )
+        
+        return impact_gdf
         
     def get_plot_metadata(self):
         """Return metadata for plotting."""

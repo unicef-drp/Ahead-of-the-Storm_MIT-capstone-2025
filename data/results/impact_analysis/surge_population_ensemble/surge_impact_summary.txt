@@ -1,9 +1,9 @@
 Storm Surge Impact Analysis Summary
 ========================================
 
-Expected Impact: 132897.84
-Best Case (min): 66448.92
-Worst Case (max): 265795.68
+Expected Impact: 69862.18
+Best Case (min): 34931.09
+Worst Case (max): 139724.37
 
 Surge Ensemble Statistics:
   Number of ensemble members: 10

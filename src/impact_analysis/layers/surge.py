@@ -927,7 +927,7 @@ class SurgeLayer(ExposureLayer):
         plot_layer_with_scales(self, output_dir=output_dir)
         
     def compute_grid(self) -> gpd.GeoDataFrame:
-        """Compute the surge exposure grid using proper coastal buffer approach."""
+        """Compute the surge exposure grid using standard grid system."""
         try:
             # Get interpolated surge data with proper coastal buffer
             interpolated_surge = self._get_interpolated_surge_data()
@@ -938,36 +938,71 @@ class SurgeLayer(ExposureLayer):
                 from shapely.geometry import Point
                 return gpd.GeoDataFrame({'probability': [0.0]}, geometry=[Point(0, 0)], crs="EPSG:4326")
             
-            # Use raw interpolated surge data directly (same as mean surge)
-            # Don't apply additional threshold - use the same data as mean visualization
-            exposure_grid = interpolated_surge.copy()
-            
-            print(f"Surge exposure grid shape: {exposure_grid.shape}")
-            print(f"Exposure cells > 0: {np.sum(exposure_grid > 0)}")
-            print(f"Exposure probability range: {np.min(exposure_grid):.3f} to {np.max(exposure_grid):.3f}")
-            
-            # Convert to GeoDataFrame as expected by base class
+            # Use the same grid system as vulnerability layers (same as flood layer)
             from src.utils.hurricane_geom import get_nicaragua_boundary
+            from src.utils.config_utils import get_config_value
+            from shapely.geometry import box
+            
             nicaragua_gdf = get_nicaragua_boundary()
             minx, miny, maxx, maxy = nicaragua_gdf.total_bounds
             
-            resolution = 0.1
-            lons = np.arange(minx, maxx + resolution, resolution)
-            lats = np.arange(miny, maxy + resolution, resolution)
+            # Use the same grid resolution as other layers
+            if self.config is None:
+                grid_res = 0.1  # Default fallback
+            else:
+                grid_res = get_config_value(self.config, "impact_analysis.grid.resolution_degrees")
+                if grid_res is None:
+                    grid_res = 0.1  # Fallback if config value not found
             
-            # Create grid geometries
-            from shapely.geometry import box
+            # Create grid using standard approach (same as flood layer)
+            print(f"DEBUG: Creating grid with bounds: {minx}, {miny}, {maxx}, {maxy}")
+            print(f"DEBUG: Grid resolution: {grid_res}")
+            print(f"DEBUG: Config is None: {self.config is None}")
+            
             grid_cells = []
+            x_coords = np.arange(minx, maxx, grid_res)
+            y_coords = np.arange(miny, maxy, grid_res)
+            
+            print(f"DEBUG: x_coords range: {x_coords[0]} to {x_coords[-1]}, {len(x_coords)} points")
+            print(f"DEBUG: y_coords range: {y_coords[0]} to {y_coords[-1]}, {len(y_coords)} points")
+            
+            for x in x_coords:
+                for y in y_coords:
+                    grid_cells.append(box(x, y, x + grid_res, y + grid_res))
+            
+            # Create GeoDataFrame with standard grid
+            grid_gdf = gpd.GeoDataFrame(grid_cells, columns=["geometry"], crs="EPSG:4326")
+            
+            # Map surge data to grid cells
             probabilities = []
+            for cell in grid_gdf.geometry:
+                # Find corresponding surge value from interpolated data
+                # Map grid coordinates to interpolated surge array indices
+                comp_minx, comp_maxx = -89.93, -73.83
+                comp_miny, comp_maxy = 7.78, 18.97
+                
+                # Get cell center
+                center = cell.centroid
+                x, y = center.x, center.y
+                
+                # Calculate indices in interpolated surge array
+                i = int((x - comp_minx) / (comp_maxx - comp_minx) * 50)
+                j = int((y - comp_miny) / (comp_maxy - comp_miny) * 44)
+                
+                # Clamp indices to valid range
+                i = max(0, min(i, 49))
+                j = max(0, min(j, 43))
+                
+                # Get surge value
+                surge_value = interpolated_surge[j, i]
+                probabilities.append(surge_value)
             
-            for j in range(len(lats) - 1):  # latitude (rows) - same order as _get_interpolated_surge_data
-                for i in range(len(lons) - 1):  # longitude (columns)
-                    cell = box(lons[i], lats[j], lons[i+1], lats[j+1])
-                    grid_cells.append(cell)
-                    probabilities.append(exposure_grid[j, i])  # j,i order for lat,lon
+            # Add probability column
+            grid_gdf["probability"] = probabilities
             
-            # Create GeoDataFrame
-            grid_gdf = gpd.GeoDataFrame({'probability': probabilities, 'geometry': grid_cells}, crs="EPSG:4326")
+            print(f"Surge exposure grid: {len(grid_gdf)} cells")
+            print(f"Exposure cells > 0: {np.sum(grid_gdf['probability'] > 0)}")
+            print(f"Exposure probability range: {np.min(grid_gdf['probability']):.3f} to {np.max(grid_gdf['probability']):.3f}")
             
             return grid_gdf
             
