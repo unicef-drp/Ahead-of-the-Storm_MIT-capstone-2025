@@ -18,11 +18,12 @@ class ImpactProneVulnerabilityLayer(VulnerabilityLayer):
     """
 
     def __init__(
-        self, config, infrastructure_type, cache_dir=None, resolution_context=None
+        self, config, infrastructure_type, cache_dir=None, resolution_context=None, use_cache=True
     ):
         super().__init__(config, resolution_context)
         self.infrastructure_type = infrastructure_type
         self.grid_gdf = None
+        self.use_cache = use_cache
         self.cache_dir = cache_dir or get_config_value(
             config,
             "impact_analysis.output.cache_directory",
@@ -213,7 +214,7 @@ class ImpactProneVulnerabilityLayer(VulnerabilityLayer):
             return grid_gdf
 
         self.grid_gdf = self._load_or_compute_grid(
-            cache_path, f"{self.infrastructure_type}_count", compute_func
+            cache_path, f"{self.infrastructure_type}_count", compute_func, use_cache=self.use_cache
         )
         return self.grid_gdf
 
@@ -306,29 +307,29 @@ class ImpactProneVulnerabilityLayer(VulnerabilityLayer):
 class SchoolImpactProneVulnerabilityLayer(ImpactProneVulnerabilityLayer):
     """Schools that are in impact-prone areas based on population/nightlights ratio."""
 
-    def __init__(self, config, cache_dir=None, resolution_context=None):
-        super().__init__(config, "school", cache_dir, resolution_context)
+    def __init__(self, config, cache_dir=None, resolution_context=None, use_cache=True):
+        super().__init__(config, "school", cache_dir, resolution_context, use_cache=use_cache)
 
 
 class HealthFacilityImpactProneVulnerabilityLayer(ImpactProneVulnerabilityLayer):
     """Health facilities that are in impact-prone areas based on population/nightlights ratio."""
 
-    def __init__(self, config, cache_dir=None, resolution_context=None):
-        super().__init__(config, "health_facility", cache_dir, resolution_context)
+    def __init__(self, config, cache_dir=None, resolution_context=None, use_cache=True):
+        super().__init__(config, "health_facility", cache_dir, resolution_context, use_cache=use_cache)
 
 
 class ShelterImpactProneVulnerabilityLayer(ImpactProneVulnerabilityLayer):
     """Shelters that are in impact-prone areas based on population/nightlights ratio."""
 
-    def __init__(self, config, cache_dir=None, resolution_context=None):
-        super().__init__(config, "shelter", cache_dir, resolution_context)
+    def __init__(self, config, cache_dir=None, resolution_context=None, use_cache=True):
+        super().__init__(config, "shelter", cache_dir, resolution_context, use_cache=use_cache)
 
 
 class SchoolPopulationImpactProneVulnerabilityLayer(ImpactProneVulnerabilityLayer):
     """Schools weighted by population that are in impact-prone areas based on population/nightlights ratio."""
 
-    def __init__(self, config, cache_dir=None, resolution_context=None):
-        super().__init__(config, "school_population", cache_dir, resolution_context)
+    def __init__(self, config, cache_dir=None, resolution_context=None, use_cache=True):
+        super().__init__(config, "school_population", cache_dir, resolution_context, use_cache=use_cache)
 
     def _compute_infrastructure_in_impact_prone_areas(
         self, grid_gdf, impact_prone_mask
@@ -422,9 +423,9 @@ class HealthFacilityPopulationImpactProneVulnerabilityLayer(
 ):
     """Health facilities weighted by population that are in impact-prone areas based on population/nightlights ratio."""
 
-    def __init__(self, config, cache_dir=None, resolution_context=None):
+    def __init__(self, config, cache_dir=None, resolution_context=None, use_cache=True):
         super().__init__(
-            config, "health_facility_population", cache_dir, resolution_context
+            config, "health_facility_population", cache_dir, resolution_context, use_cache=use_cache
         )
 
     def _compute_infrastructure_in_impact_prone_areas(
@@ -519,8 +520,8 @@ class HealthFacilityPopulationImpactProneVulnerabilityLayer(
 class ShelterPopulationImpactProneVulnerabilityLayer(ImpactProneVulnerabilityLayer):
     """Shelters weighted by population that are in impact-prone areas based on population/nightlights ratio."""
 
-    def __init__(self, config, cache_dir=None, resolution_context=None):
-        super().__init__(config, "shelter_population", cache_dir, resolution_context)
+    def __init__(self, config, cache_dir=None, resolution_context=None, use_cache=True):
+        super().__init__(config, "shelter_population", cache_dir, resolution_context, use_cache=use_cache)
 
     def _compute_infrastructure_in_impact_prone_areas(
         self, grid_gdf, impact_prone_mask

@@ -1,0 +1,5 @@
+Surge exposure summary:
+- Max height: 1.436 m
+- Mean height: 0.059 m
+- Total cells with surge: 63917
+- High surge cells (>1m): 1430

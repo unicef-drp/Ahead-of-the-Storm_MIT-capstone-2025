@@ -149,3 +149,6 @@ env/
 !data/results/impact_analysis/
 !data/results/impact_analysis/** 
 !data/raw/gadm/nicaragua_departments.geojson
+
+# Allow tracking of bathymetry file
+!data/raw/bathymetry/nic_bathymetry_2024_gebco_large.tif

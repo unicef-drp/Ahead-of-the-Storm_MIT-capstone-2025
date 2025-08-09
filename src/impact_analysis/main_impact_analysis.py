@@ -236,16 +236,39 @@ def main():
         print("No runs specified in config under impact_analysis.runs")
         sys.exit(1)
 
-    for exposure_type, vulnerabilities in runs.items():
-        for vuln_type in vulnerabilities:
-            # Determine appropriate scenario for each exposure type
-            if exposure_type == "flood":
-                scenario = "ensemble"  # Flood uses ensemble variations
-            elif exposure_type == "landslide":
-                scenario = "ensemble"  # Landslide uses ensemble for visualization
-            else:
-                scenario = "mean"  # Hurricane uses mean scenario
+    # Handle both dictionary and list structures in config
+    if isinstance(runs, dict):
+        # Original dictionary structure
+        for exposure_type, vulnerabilities in runs.items():
+            if isinstance(vulnerabilities, list):
+                for vuln_type in vulnerabilities:
+                    # Determine appropriate scenario for each exposure type
+                    if exposure_type == "flood":
+                        scenario = "ensemble"  # Flood uses ensemble variations
+                    elif exposure_type == "landslide":
+                        scenario = "ensemble"  # Landslide uses ensemble for visualization
+                    elif exposure_type == "surge":
+                        scenario = "ensemble"  # Surge uses ensemble
+                    else:
+                        scenario = "mean"  # Hurricane uses mean scenario
 
+                    run_analysis(
+                        config,
+                        exposure_type,
+                        vuln_type,
+                        hurricane_df,
+                        chosen_forecast,
+                        output_dir,
+                        cache_dir,
+                        scenario=scenario,
+                        use_cache=use_cache,
+                    )
+    elif isinstance(runs, list):
+        # New list structure - assume all items are vulnerability types for surge
+        exposure_type = "surge"  # Default to surge for list structure
+        scenario = "ensemble"
+        
+        for vuln_type in runs:
             run_analysis(
                 config,
                 exposure_type,
@@ -257,6 +280,9 @@ def main():
                 scenario=scenario,
                 use_cache=use_cache,
             )
+    else:
+        print(f"Unexpected runs structure: {type(runs)}")
+        sys.exit(1)
     print(f"\nImpact analysis complete! Results saved to: {output_dir}")
 
 

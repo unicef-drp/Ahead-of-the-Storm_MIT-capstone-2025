@@ -1,0 +1,12 @@
+Storm Surge Exposure Statistics
+========================================
+
+Grid shape: (249, 349)
+Maximum surge height: 1.436 m
+Mean surge height: 0.059 m
+Standard deviation: 0.179 m
+Cells with surge > 0.1m: 5326
+Cells with surge > 0.5m: 2548
+Cells with surge > 1.0m: 1430
+Cells with surge > 2.0m: 0
+Cells with surge > 3.0m: 0

@@ -1,0 +1,13 @@
+Storm Surge Impact Analysis Summary
+========================================
+
+Expected Impact: 36.40
+Best Case (min): 18.20
+Worst Case (max): 72.80
+
+Surge Ensemble Statistics:
+  Number of ensemble members: 10
+  Max surge range: 0.265 - 3.608 m
+  Mean max surge: 1.455 m
+  Coverage range: 2.3 - 14.1%
+  Mean coverage: 7.3%

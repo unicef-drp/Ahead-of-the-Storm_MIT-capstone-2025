@@ -1,0 +1,68 @@
+# Storm Surge Data Processing Configuration
+# Bathymetry and hurricane ensemble data for Nicaragua Storm Surge Modeling
+
+surge:
+  name: "nicaragua_surge"
+  year: 2024
+  
+  # Data sources
+  bathymetry_dir: "data/raw/bathymetry"
+  hurricane_data_dir: "data/preprocessed/weatherlab/processed"
+  
+  # Output settings
+  output_directory: "data/results/impact_analysis/surge_ensemble"
+  cache_dir: "data/results/impact_analysis/cache"
+  
+  # Grid setup
+  grid_resolution_km: 5.0
+  grid_bounds: null  # Will be determined from bathymetry
+  
+  # Physical constants
+  gravity: 9.81  # m/s^2
+  air_density: 1.225  # kg/m^3
+  water_density: 1025.0  # kg/m^3
+  
+  # Wind field parameters
+  max_wind_radius_km: 400.0
+  background_pressure: 1013.25  # hPa
+  
+  # Simulation parameters
+  time_step_hours: 0.002  # 7.2 second time steps
+  max_simulation_hours: 90
+  
+  # Bottom friction
+  manning_coefficient: 0.025
+  min_depth_for_friction: 0.1  # meters
+  
+  # Numerical stability
+  cfl_factor: 0.5
+  max_surge_height: 10.0  # meters
+  
+  # Inland penetration parameters
+  inland_penetration_enabled: true   # Set to true to allow inland flow
+  max_inland_distance_km: 10.0       # Maximum distance inland (km)
+  inland_decay_factor: 0.5          # Surge decay per km inland
+  coastal_elevation_threshold: 2.0   # Maximum coastal elevation for penetration (m)
+  
+  # Surge threshold for filtering significant surge points
+  surge_threshold_m: 0.5  # Only use surge points above this threshold for interpolation
+  
+  # Probability threshold for binary surge classification
+  probability_threshold_m: 0.1  # 10cm threshold for binary surge probability
+  
+  # Exposure threshold for converting surge heights to exposure probability
+  exposure_threshold_m: 0.05  # Surge heights above this threshold are considered exposed
+  
+  # Ensemble settings
+  default_n_members: 10
+  max_hours: 48
+  
+  # Visualization settings
+  surge_threshold_cm: 5.0  # Minimum surge to display
+  colormap_name: "enhanced_surge"
+  
+# Logging configuration
+logging:
+  level: "INFO"
+  log_file: "logs/surge_processing.log"
+  console_output: true

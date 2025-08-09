@@ -98,7 +98,7 @@ POVERTY_TABLE["region_norm"] = POVERTY_TABLE["Region"].apply(normalize_name)
 
 
 class PovertyVulnerabilityLayer(VulnerabilityLayer):
-    def __init__(self, config, age_groups=None, gender="both", cache_dir=None, resolution_context=None):
+    def __init__(self, config, age_groups=None, gender="both", cache_dir=None, resolution_context=None, use_cache=True):
         super().__init__(config, resolution_context)
         self.age_groups = (
             age_groups if age_groups is not None else list(range(0, 85, 5))
@@ -106,6 +106,7 @@ class PovertyVulnerabilityLayer(VulnerabilityLayer):
         self.gender = gender
         self.grid_gdf = None
         self._poverty_grid = None
+        self.use_cache = use_cache
         self.cache_dir = cache_dir or get_config_value(
             config,
             "impact_analysis.output.cache_directory",
@@ -192,7 +193,7 @@ class PovertyVulnerabilityLayer(VulnerabilityLayer):
             return final_gdf
 
         self.grid_gdf = self._load_or_compute_grid(
-            cache_path, "poverty_count", compute_func
+            cache_path, "poverty_count", compute_func, use_cache=self.use_cache
         )
         self._poverty_grid = self.grid_gdf["poverty_count"].values
         return self.grid_gdf
@@ -245,7 +246,7 @@ class PovertyVulnerabilityLayer(VulnerabilityLayer):
 
 
 class SeverePovertyVulnerabilityLayer(VulnerabilityLayer):
-    def __init__(self, config, age_groups=None, gender="both", cache_dir=None, resolution_context=None):
+    def __init__(self, config, age_groups=None, gender="both", cache_dir=None, resolution_context=None, use_cache=True):
         super().__init__(config, resolution_context)
         self.age_groups = (
             age_groups if age_groups is not None else list(range(0, 85, 5))
@@ -253,6 +254,7 @@ class SeverePovertyVulnerabilityLayer(VulnerabilityLayer):
         self.gender = gender
         self.grid_gdf = None
         self._severe_poverty_grid = None
+        self.use_cache = use_cache
         self.cache_dir = cache_dir or get_config_value(
             config,
             "impact_analysis.output.cache_directory",
@@ -342,7 +344,7 @@ class SeverePovertyVulnerabilityLayer(VulnerabilityLayer):
             return final_gdf
 
         self.grid_gdf = self._load_or_compute_grid(
-            cache_path, "severepoverty_count", compute_func
+            cache_path, "severepoverty_count", compute_func, use_cache=self.use_cache
         )
         self._severe_poverty_grid = self.grid_gdf["severepoverty_count"].values
         return self.grid_gdf
