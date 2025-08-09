@@ -94,20 +94,20 @@ impact_analysis:
       # - unvaccinated
       # - unvaccinated_children
     surge:
-      # - schools
-      # - school_population
-      # - health_facilities
-      # - health_facilities_population
-      # - shelters
-      # - shelters_population
-       - population
-      # - children
-      # - poverty
-      # - poverty_children
-      # - severe_poverty
-      # - severe_poverty_children
-      # - unvaccinated
-      # - unvaccinated_children
+      - schools
+      - school_population
+      - health_facilities
+      - health_facilities_population
+      - shelters
+      - shelters_population
+      - population
+      - children
+      - poverty
+      - poverty_children
+      - severe_poverty
+      - severe_poverty_children
+      - unvaccinated
+      - unvaccinated_children
     # flood:
       # - schools
       # - school_population

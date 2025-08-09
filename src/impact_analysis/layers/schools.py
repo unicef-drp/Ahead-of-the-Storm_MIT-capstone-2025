@@ -11,10 +11,11 @@ import os
 
 
 class SchoolVulnerabilityLayer(VulnerabilityLayer):
-    def __init__(self, config, cache_dir=None, resolution_context=None):
+    def __init__(self, config, cache_dir=None, resolution_context=None, use_cache=True):
         super().__init__(config, resolution_context)
         self.grid_gdf = None
         self._school_grid = None
+        self.use_cache = use_cache
         self.cache_dir = cache_dir or get_config_value(
             config,
             "impact_analysis.output.cache_directory",
@@ -94,7 +95,7 @@ class SchoolVulnerabilityLayer(VulnerabilityLayer):
             return grid_gdf
 
         self.grid_gdf = self._load_or_compute_grid(
-            cache_path, "school_count", compute_func
+            cache_path, "school_count", compute_func, use_cache=self.use_cache
         )
         self._school_grid = self.grid_gdf["school_count"].values
         return self.grid_gdf
@@ -138,10 +139,11 @@ class SchoolVulnerabilityLayer(VulnerabilityLayer):
 
 
 class SchoolPopulationVulnerabilityLayer(VulnerabilityLayer):
-    def __init__(self, config, cache_dir=None, resolution_context=None):
+    def __init__(self, config, cache_dir=None, resolution_context=None, use_cache=True):
         super().__init__(config, resolution_context)
         self.grid_gdf = None
         self._people_grid = None
+        self.use_cache = use_cache
         self.cache_dir = cache_dir or get_config_value(
             config,
             "impact_analysis.output.cache_directory",
@@ -204,7 +206,7 @@ class SchoolPopulationVulnerabilityLayer(VulnerabilityLayer):
             return grid_gdf
 
         self.grid_gdf = self._load_or_compute_grid(
-            cache_path, "people_count", compute_func
+            cache_path, "people_count", compute_func, use_cache=self.use_cache
         )
         self._people_grid = self.grid_gdf["people_count"].values
         return self.grid_gdf

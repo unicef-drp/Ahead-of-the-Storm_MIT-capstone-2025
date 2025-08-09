@@ -11,11 +11,12 @@ from src.utils.hurricane_geom import get_nicaragua_boundary
 
 
 class ShelterVulnerabilityLayer(VulnerabilityLayer):
-    def __init__(self, config, weighted_by_capacity=False, cache_dir=None, resolution_context=None):
+    def __init__(self, config, weighted_by_capacity=False, cache_dir=None, resolution_context=None, use_cache=True):
         super().__init__(config, resolution_context)
         self.weighted_by_capacity = weighted_by_capacity
         self.grid_gdf = None
         self._shelter_grid = None
+        self.use_cache = use_cache
         self.cache_dir = cache_dir or get_config_value(
             config,
             "impact_analysis.output.cache_directory",
@@ -106,7 +107,7 @@ class ShelterVulnerabilityLayer(VulnerabilityLayer):
             return grid_gdf
 
         self.grid_gdf = self._load_or_compute_grid(
-            cache_path, value_column, compute_func
+            cache_path, value_column, compute_func, use_cache=self.use_cache
         )
         self._shelter_grid = self.grid_gdf[value_column].values
         return self.grid_gdf
